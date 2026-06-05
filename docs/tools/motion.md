@@ -16,11 +16,10 @@ Both backends are available only inside `template` declarations, not mixins.
 
 ## motion.shad
 
-`motion.shad` returns inline ASS tags and does not require framerate metadata.
-On the first call it injects the shadow-color setup tags automatically. If the
-line does not define `\4c`, Pykara uses the style primary color. Each rendered
-output line accepts at most one motion call, whether `motion.shad.*` or
-`motion.fbf.*`.
+`motion.shad` produces inline ASS tags and requires no framerate metadata. On
+the first call it injects shadow-color setup tags automatically, using `\4c` if
+defined or the style's primary color otherwise. Each rendered line accepts at
+most one `motion.*` call.
 
 The positional effects `arc`, `bezier`, `spring`, and `wave` cannot be combined
 with existing `\pos` or `\move` tags. `jitter` can use an existing `\pos`, but
@@ -41,11 +40,10 @@ Comment: 0,0:00:00.00,0:00:05.00,Default,,0,0,0,karaoke,Goal
 
 ## motion.fbf
 
-`motion.fbf` expands the current generated line into one event per frame and
-requires `PlaybackFPS` or dummy-video FPS metadata. One rendered line accepts at
-most one `motion.fbf.*` effect, but may also include one `gradient.make(...)`.
-When both are present, Pykara bakes the motion first and applies the gradient to
-each frame afterward. `motion.fbf.*` cannot be combined with `\pos` or `\move`.
+`motion.fbf` expands the rendered line into one event per frame and requires
+`PlaybackFPS` or dummy-video FPS metadata. It cannot be combined with `\pos` or
+`\move`. One `gradient.make(...)` may be added alongside; Pykara bakes the
+motion first and applies the gradient per frame.
 
 ### Available Effects
 

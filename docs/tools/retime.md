@@ -76,10 +76,10 @@ for example, `ltr` makes earlier characters start further before the line
 and later characters closer to the line start.
 
 Presets need at least two items to spread across, so they are not valid
-in `template line`. `syl`, `presyl`, and `postsyl` presets require
-`template char`; `start2syl` and `syl2end` presets work in
-`template syl` and `template char`, spreading across syllables or characters
-respectively.
+in `template line`. `syl`, `presyl`, and `postsyl` presets are only valid
+in `template char`, where they spread the offset across characters.
+`start2syl` and `syl2end` presets work in both `template syl` and
+`template char`, spreading across syllables or characters respectively.
 
 | Preset | Order |
 | -------------- | --------------------------- |

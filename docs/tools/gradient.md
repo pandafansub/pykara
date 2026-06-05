@@ -42,15 +42,7 @@ Comment: 0,0:00:00.00,0:00:05.00,Default,,0,0,0,karaoke,Goal
 
 - Requires `PlaybackFPS` or dummy-video FPS metadata.
 - Available only inside `template` declarations, not mixins.
-- Can be combined with one `motion.fbf.*` effect on the same rendered line. In
-  that case, Pykara expands the motion frame-by-frame first and slices the gradient after.
 - Cannot be combined with `\move`.
-- Can be combined with `\pos`.
 - Cannot be combined with `\clip` or `\iclip`.
 - Does not support rotation or shear tags: `\frz`, `\frx`, `\fry`, `\fax`,
   `\fay`.
-
-In line scope, Pykara resolves implicit ASS positioning into an explicit
-`\pos(...)` before slicing. Animated geometry tags such as `\fs`, `\fscx`,
-`\fscy`, `\fsp`, `\bord`, `\shad`, `\blur`, and `\be` are expanded
-frame-by-frame before the gradient is applied.
