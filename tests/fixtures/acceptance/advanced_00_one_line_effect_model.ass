@@ -1,0 +1,35 @@
+[Script Info]
+ScriptType: v4.00+
+WrapStyle: 0
+PlayResX: 1280
+PlayResY: 720
+ScaledBorderAndShadow: yes
+YCbCr Matrix: TV.601
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: ModelTop,Noto Sans,56,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,0,8,40,40,42,1
+Style: ModelBottom,Noto Sans,56,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,0,2,40,40,42,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Comment: 0,0:00:00.00,0:00:00.00,ModelTop,,0,0,0,code setup all,stagger = 34; lead_in = -150; lead_out = -50
+Comment: 0,0:00:00.00,0:00:00.00,ModelTop,,0,0,0,,
+Comment: 0,0:00:00.00,0:00:00.00,ModelTop,,0,0,0,template syl all no_blank,!retime.line(lead_in,lead_out+$syl_i*stagger)!{\an5\pos(!$syl_center!,!$syl_middle!)\t(!$syl_i*stagger!,!200+$syl_i*stagger!,{entrada escalonada da silaba})\t(!$syl_start!,!$syl_end!,{enfase durante a silaba cantada})\t(!line.dur-400!,!line.dur!,{saida compartilhada da linha})}
+Comment: 0,0:00:00.00,0:00:00.00,ModelTop,,0,0,0,,
+Comment: 0,0:00:01.00,0:00:04.80,ModelTop,,0,0,0,karaoke,{\k35}Soft {\k45}line {\k42}timing {\k38}model
+Comment: 0,0:00:05.30,0:00:09.20,ModelTop,,0,0,0,karaoke,{\k32}Fill {\k44}each {\k34}transform {\k50}yourself
+Comment: 0,0:00:09.80,0:00:13.70,ModelBottom,,0,0,0,karaoke,{\k42}Same {\k48}model {\k38}on {\k44}another {\k70}style
+Dialogue: 0,0:00:00.85,0:00:04.75,ModelTop,,0,0,0,fx,{\an5\pos(465,70)\t(0,200,{entrada escalonada da silaba})\t(0,350,{enfase durante a silaba cantada})\t(3500,3900,{saida compartilhada da linha})}Soft 
+Dialogue: 0,0:00:00.85,0:00:04.78,ModelTop,,0,0,0,fx,{\an5\pos(549,70)\t(34,234,{entrada escalonada da silaba})\t(350,800,{enfase durante a silaba cantada})\t(3534,3934,{saida compartilhada da linha})}line 
+Dialogue: 0,0:00:00.85,0:00:04.82,ModelTop,,0,0,0,fx,{\an5\pos(657,70)\t(68,268,{entrada escalonada da silaba})\t(800,1220,{enfase durante a silaba cantada})\t(3568,3968,{saida compartilhada da linha})}timing 
+Dialogue: 0,0:00:00.85,0:00:04.85,ModelTop,,0,0,0,fx,{\an5\pos(792,70)\t(102,302,{entrada escalonada da silaba})\t(1220,1600,{enfase durante a silaba cantada})\t(3602,4002,{saida compartilhada da linha})}model
+Dialogue: 0,0:00:05.15,0:00:09.15,ModelTop,,0,0,0,fx,{\an5\pos(403,70)\t(0,200,{entrada escalonada da silaba})\t(0,320,{enfase durante a silaba cantada})\t(3600,4000,{saida compartilhada da linha})}Fill 
+Dialogue: 0,0:00:05.15,0:00:09.18,ModelTop,,0,0,0,fx,{\an5\pos(486,70)\t(34,234,{entrada escalonada da silaba})\t(320,760,{enfase durante a silaba cantada})\t(3634,4034,{saida compartilhada da linha})}each 
+Dialogue: 0,0:00:05.15,0:00:09.22,ModelTop,,0,0,0,fx,{\an5\pos(640,70)\t(68,268,{entrada escalonada da silaba})\t(760,1100,{enfase durante a silaba cantada})\t(3668,4068,{saida compartilhada da linha})}transform 
+Dialogue: 0,0:00:05.15,0:00:09.25,ModelTop,,0,0,0,fx,{\an5\pos(826,70)\t(102,302,{entrada escalonada da silaba})\t(1100,1600,{enfase durante a silaba cantada})\t(3702,4102,{saida compartilhada da linha})}yourself
+Dialogue: 0,0:00:09.65,0:00:13.65,ModelBottom,,0,0,0,fx,{\an5\pos(411,650)\t(0,200,{entrada escalonada da silaba})\t(0,420,{enfase durante a silaba cantada})\t(3600,4000,{saida compartilhada da linha})}Same 
+Dialogue: 0,0:00:09.65,0:00:13.68,ModelBottom,,0,0,0,fx,{\an5\pos(536,650)\t(34,234,{entrada escalonada da silaba})\t(420,900,{enfase durante a silaba cantada})\t(3634,4034,{saida compartilhada da linha})}model 
+Dialogue: 0,0:00:09.65,0:00:13.72,ModelBottom,,0,0,0,fx,{\an5\pos(633,650)\t(68,268,{entrada escalonada da silaba})\t(900,1280,{enfase durante a silaba cantada})\t(3668,4068,{saida compartilhada da linha})}on 
+Dialogue: 0,0:00:09.65,0:00:13.75,ModelBottom,,0,0,0,fx,{\an5\pos(746,650)\t(102,302,{entrada escalonada da silaba})\t(1280,1720,{enfase durante a silaba cantada})\t(3702,4102,{saida compartilhada da linha})}another 
+Dialogue: 0,0:00:09.65,0:00:13.79,ModelBottom,,0,0,0,fx,{\an5\pos(878,650)\t(136,336,{entrada escalonada da silaba})\t(1720,2420,{enfase durante a silaba cantada})\t(3736,4136,{saida compartilhada da linha})}style

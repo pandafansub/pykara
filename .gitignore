@@ -1,0 +1,24 @@
+# Virtual environments
+.venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Tool caches
+.mypy_cache/
+.pyright/
+.pytest_cache/
+.ruff_cache/
+
+# Coverage and build artifacts
+.coverage
+build/
+dist/
+htmlcov/
+*.egg-info/
+
+# Local tool state
+.benchmarks/
+.claude
+.codex

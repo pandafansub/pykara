@@ -1,0 +1,20 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1280
+PlayResY: 720
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Noto Sans,40,&H00FFFFFF,&H0000FFFF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,1,2,30,30,30,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template line no_text,!retime.line(10,20)!LINE
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template line no_text,!retime.preline(-40,-10)!PRE
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template line no_text,!retime.postline(10,40)!POST
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl no_text,!retime.presyl(-50,-10)!PS
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl no_text,!retime.syl(10,20)!SYL
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl no_text,!retime.postsyl(10,50)!POS
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl no_text,!retime.start2syl(5,15)!S2S
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl no_text,!retime.syl2end(25,35)!S2E
+Dialogue: 0,0:00:01.00,0:00:01.60,Default,,0,0,0,karaoke,{\k20}go{\k40}al

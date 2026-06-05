@@ -1,0 +1,14 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1280
+PlayResY: 720
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Noto Sans,40,&H00FFFFFF,&H0000FFFF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,1,2,30,30,30,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code setup all,__seed__ = 7
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template line all no_text,FN:!math.floor(3.9)!:!math.ceil(3.1)!:!f'{math.sqrt(9):.1f}'!:!f'{math.fabs(-2.5):.1f}'!:!f'{math.sin(math.radians(30)):.2f}'!:!f'{math.cos(math.radians(60)):.2f}'!:!round(coord.polar(0, 10, "x"))!:!round(coord.polar(90, 10, "y"))!:!coord.circular_spread(4)[0]!:!coord.random_spread(1)[0]!:!color.rgb_to_ass(1, 2, 3)!:!color.alpha(12)!:!color.interpolate(0.5, "&H000000&", "&H0000FF&")!:!color.rgb_to_ass(*color.hsv_to_rgb(60, 1, 1))!:!color.rgb_to_ass(*color.hsl_to_rgb(120, 1, 0.5))!:!put("saved", "P")!:!get("saved")!:!lock("locked", "L")!:!get("locked")!:!shape.rotate("m 0 0 l 2 0 l 2 2 l 0 2", 90)!:!shape.displace("m 0 0 l 2 0 l 2 2 l 0 2", 1, 2)!:!shape.center_at("m 0 0 l 2 0 l 2 2 l 0 2", 5, 6)!:!shape.split_clip(4, 0, 10, 20, 6)!:!random.randint(1, 10)!:!random.choice(("A", "B"))!:!random.choice_no_repeat(("A", "B"))!:!f'{random.random():.5f}'!
+Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,karaoke,{\k20}Api

@@ -1,0 +1,81 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pykara"
+version = "0.1"
+description = "Karaoke effect templating engine for ASS subtitle files."
+readme = "README.md"
+requires-python = ">=3.14"
+license = "MIT"
+authors = [
+    { name = "Panda Fansub" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "freetype-py; sys_platform != 'win32'",
+    "uharfbuzz; sys_platform != 'win32'",
+    "fonttools; sys_platform != 'win32'",
+    "matplotlib; sys_platform != 'win32'",
+]
+
+[project.scripts]
+pykara = "pykara.interfaces.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/pandafansub/pykara"
+Repository = "https://github.com/pandafansub/pykara"
+Documentation = "https://github.com/pandafansub/pykara/blob/main/docs/index.md"
+Issues = "https://github.com/pandafansub/pykara/issues"
+
+[project.optional-dependencies]
+dev = [
+    "fonttools",
+    "matplotlib",
+    "mdformat",
+    "ruff",
+    "pyright",
+    "pytest",
+    "pytest-cov",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pykara"]
+
+[tool.ruff]
+line-length = 80
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "ANN", "S", "B", "A", "C4", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+"pykara/engine/assets/shapes.py" = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pyright]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+include = ["pykara", "tests"]
+venvPath = "."
+venv = ".venv"
+exclude = [".venv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "unix_only: requires Unix-only font shaping dependencies",
+]

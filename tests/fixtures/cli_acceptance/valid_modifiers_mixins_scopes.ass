@@ -1,0 +1,27 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1280
+PlayResY: 720
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Noto Sans,40,&H00FFFFFF,&H0000FFFF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,1,2,30,30,30,1
+Style: Alt,Noto Sans,44,&H00FFF0CC,&H0000FFFF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,1,8,30,30,30,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code setup all,enabled = True; muted = False; allowed_styles = ("Alt",); style_hits = 0
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code word all,word_flag = f"W{word.i}"
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code syl all,glow = syl.inline_fx == "g"; syl_flag = f"S{syl.i}"
+Comment: 0,0:00:00.00,0:00:00.00,Alt,,0,0,0,code line styles allowed_styles,style_hits = style_hits + 1; line_flag = f"L{line.i}:{style.name}:{style_hits}"
+Comment: 0,0:00:00.00,0:00:00.00,Alt,lead,0,0,0,template line styles allowed_styles no_text when enabled unless muted,!layer.set(2)!TL:!line_flag!
+Comment: 0,0:00:00.00,0:00:00.00,Alt,,0,0,0,mixin line prepend layer 2 for lead when enabled unless muted,PL:
+Comment: 0,0:00:00.00,0:00:00.00,Alt,,0,0,0,mixin line layer 2 when enabled unless muted,:IL
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template word all no_text no_blank when enabled unless muted,TW:!word_flag!
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,mixin word prepend when enabled unless muted,PW:
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl all fx g loop glow 2 no_text no_blank when glow unless muted,TS:!syl_flag!:!$loop_glow_i!
+Comment: 0,0:00:00.00,0:00:00.00,Alt,,0,0,0,mixin syl prepend fx g when enabled unless muted,PS:
+Comment: 0,0:00:00.00,0:00:00.00,Default,spark,0,0,0,template char all no_merge,!layer.set(3)!{\an5}
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,mixin char prepend layer 3 for spark when enabled unless muted,{\blur2}
+Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,karaoke,{\k20}No {\k20}FX
+Dialogue: 0,0:00:03.00,0:00:04.00,Alt,,0,0,0,karaoke,{\k20}Hi{\k20\-g}All

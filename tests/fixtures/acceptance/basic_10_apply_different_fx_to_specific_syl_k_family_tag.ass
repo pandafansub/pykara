@@ -1,0 +1,121 @@
+[Script Info]
+Title: Default Aegisub file
+ScriptType: v4.00+
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+YCbCr Matrix: None
+PlayResX: 1920
+PlayResY: 1080
+Video File: ?dummy:24000/1001:40000:1920:1080:47:163:254:c
+Video AR Value: 1.777778
+Video Zoom Percent: 0.500000
+Active Line: 5
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default-furigana,Noto Sans,40,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,1,2,10,10,30,1
+Style: Default,Noto Sans,80,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,30,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code syl,is_green = syl.tag == "\\kf"
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code syl,is_red = syl.tag == "\\ko"
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code syl,is_normal = not is_green and not is_red
+Comment: 0,0:00:00.00,0:00:00.00,Default,lead-in,0,0,0,template syl,!retime.start2syl(-300,0)!{\an5\pos($syl_center,$syl_middle)\fad(300,0)}
+Comment: 0,0:00:00.00,0:00:00.00,Default,high-light,0,0,0,template syl when is_red,!retime.syl(0,0)!{\an5\pos($syl_center,$syl_middle)\1c&H0000FF&\t(0,33,\fscx120\fscy120)\t(33,$syl_dur,\fscx100\fscy100)}
+Comment: 0,0:00:00.00,0:00:00.00,Default,high-light,0,0,0,template syl when is_green,!retime.syl(0,0)!{\an5\pos($syl_center,$syl_middle)\1c&H00FF00&\t(0,33,\fscx120\fscy120)\t(33,$syl_dur,\fscx100\fscy100)}
+Comment: 0,0:00:00.00,0:00:00.00,Default,high-light,0,0,0,template syl when is_normal,!retime.syl(0,0)!{\an5\pos($syl_center,$syl_middle)\t(0,33,\fscx120\fscy120)\t(33,$syl_dur,\fscx100\fscy100)}
+Comment: 0,0:00:00.00,0:00:00.00,Default,lead-out,0,0,0,template syl,!retime.syl2end(0,300)!{\an5\pos($syl_center,$syl_middle)\fad(0,300)}
+Comment: 0,0:00:17.19,0:00:21.09,Default,,0,0,0,karaoke,{\k36}gol{\k30}mok{\k26}gil {\k48}eul {\kf47}do{\k33}l a {\k26}deu{\k47}leo {\k55}ga{\k42}myeon
+Comment: 0,0:00:21.34,0:00:25.14,Default,,0,0,0,karaoke,{\k22}hok{\k30}si {\k25}ra{\k51}do {\ko48}geu {\k23}ae{\k32}ga {\k50}na{\k50}ta{\k49}na
+Comment: 0,0:00:25.55,0:00:29.66,Default,,0,0,0,karaoke,{\k23}da{\kf34}shi {\ko53}ddo {\kf46}nol{\ko22}rae{\kf21}kil{\ko32}ji {\kf29}mol{\ko46}la{\k105}yo
+Dialogue: 0,0:00:16.89,0:00:17.19,Default,,0,0,0,fx,{\an5\pos(501,1010)\fad(300,0)}gol
+Dialogue: 0,0:00:17.19,0:00:17.55,Default,,0,0,0,fx,{\an5\pos(501,1010)\t(0,33,\fscx120\fscy120)\t(33,360,\fscx100\fscy100)}gol
+Dialogue: 0,0:00:17.55,0:00:21.39,Default,,0,0,0,fx,{\an5\pos(501,1010)\fad(0,300)}gol
+Dialogue: 0,0:00:16.89,0:00:17.55,Default,,0,0,0,fx,{\an5\pos(606,1010)\fad(300,0)}mok
+Dialogue: 0,0:00:17.55,0:00:17.85,Default,,0,0,0,fx,{\an5\pos(606,1010)\t(0,33,\fscx120\fscy120)\t(33,300,\fscx100\fscy100)}mok
+Dialogue: 0,0:00:17.85,0:00:21.39,Default,,0,0,0,fx,{\an5\pos(606,1010)\fad(0,300)}mok
+Dialogue: 0,0:00:16.89,0:00:17.85,Default,,0,0,0,fx,{\an5\pos(700,1010)\fad(300,0)}gil 
+Dialogue: 0,0:00:17.85,0:00:18.11,Default,,0,0,0,fx,{\an5\pos(700,1010)\t(0,33,\fscx120\fscy120)\t(33,260,\fscx100\fscy100)}gil 
+Dialogue: 0,0:00:18.11,0:00:21.39,Default,,0,0,0,fx,{\an5\pos(700,1010)\fad(0,300)}gil 
+Dialogue: 0,0:00:16.89,0:00:18.11,Default,,0,0,0,fx,{\an5\pos(791,1010)\fad(300,0)}eul 
+Dialogue: 0,0:00:18.11,0:00:18.59,Default,,0,0,0,fx,{\an5\pos(791,1010)\t(0,33,\fscx120\fscy120)\t(33,480,\fscx100\fscy100)}eul 
+Dialogue: 0,0:00:18.59,0:00:21.39,Default,,0,0,0,fx,{\an5\pos(791,1010)\fad(0,300)}eul 
+Dialogue: 0,0:00:16.89,0:00:18.59,Default,,0,0,0,fx,{\an5\pos(884,1010)\fad(300,0)}do
+Dialogue: 0,0:00:18.59,0:00:19.06,Default,,0,0,0,fx,{\an5\pos(884,1010)\1c&H00FF00&\t(0,33,\fscx120\fscy120)\t(33,470,\fscx100\fscy100)}do
+Dialogue: 0,0:00:19.06,0:00:21.39,Default,,0,0,0,fx,{\an5\pos(884,1010)\fad(0,300)}do
+Dialogue: 0,0:00:16.89,0:00:19.06,Default,,0,0,0,fx,{\an5\pos(952,1010)\fad(300,0)}l a 
+Dialogue: 0,0:00:19.06,0:00:19.39,Default,,0,0,0,fx,{\an5\pos(952,1010)\t(0,33,\fscx120\fscy120)\t(33,330,\fscx100\fscy100)}l a 
+Dialogue: 0,0:00:19.39,0:00:21.39,Default,,0,0,0,fx,{\an5\pos(952,1010)\fad(0,300)}l a 
+Dialogue: 0,0:00:16.89,0:00:19.39,Default,,0,0,0,fx,{\an5\pos(1051,1010)\fad(300,0)}deu
+Dialogue: 0,0:00:19.39,0:00:19.65,Default,,0,0,0,fx,{\an5\pos(1051,1010)\t(0,33,\fscx120\fscy120)\t(33,260,\fscx100\fscy100)}deu
+Dialogue: 0,0:00:19.65,0:00:21.39,Default,,0,0,0,fx,{\an5\pos(1051,1010)\fad(0,300)}deu
+Dialogue: 0,0:00:16.89,0:00:19.65,Default,,0,0,0,fx,{\an5\pos(1146,1010)\fad(300,0)}leo 
+Dialogue: 0,0:00:19.65,0:00:20.12,Default,,0,0,0,fx,{\an5\pos(1146,1010)\t(0,33,\fscx120\fscy120)\t(33,470,\fscx100\fscy100)}leo 
+Dialogue: 0,0:00:20.12,0:00:21.39,Default,,0,0,0,fx,{\an5\pos(1146,1010)\fad(0,300)}leo 
+Dialogue: 0,0:00:16.89,0:00:20.12,Default,,0,0,0,fx,{\an5\pos(1238,1010)\fad(300,0)}ga
+Dialogue: 0,0:00:20.12,0:00:20.67,Default,,0,0,0,fx,{\an5\pos(1238,1010)\t(0,33,\fscx120\fscy120)\t(33,550,\fscx100\fscy100)}ga
+Dialogue: 0,0:00:20.67,0:00:21.39,Default,,0,0,0,fx,{\an5\pos(1238,1010)\fad(0,300)}ga
+Dialogue: 0,0:00:16.89,0:00:20.67,Default,,0,0,0,fx,{\an5\pos(1367,1010)\fad(300,0)}myeon
+Dialogue: 0,0:00:20.67,0:00:21.09,Default,,0,0,0,fx,{\an5\pos(1367,1010)\t(0,33,\fscx120\fscy120)\t(33,420,\fscx100\fscy100)}myeon
+Dialogue: 0,0:00:21.09,0:00:21.39,Default,,0,0,0,fx,{\an5\pos(1367,1010)\fad(0,300)}myeon
+Dialogue: 0,0:00:21.04,0:00:21.34,Default,,0,0,0,fx,{\an5\pos(627,1010)\fad(300,0)}hok
+Dialogue: 0,0:00:21.34,0:00:21.56,Default,,0,0,0,fx,{\an5\pos(627,1010)\t(0,33,\fscx120\fscy120)\t(33,220,\fscx100\fscy100)}hok
+Dialogue: 0,0:00:21.56,0:00:25.44,Default,,0,0,0,fx,{\an5\pos(627,1010)\fad(0,300)}hok
+Dialogue: 0,0:00:21.04,0:00:21.56,Default,,0,0,0,fx,{\an5\pos(700,1010)\fad(300,0)}si 
+Dialogue: 0,0:00:21.56,0:00:21.86,Default,,0,0,0,fx,{\an5\pos(700,1010)\t(0,33,\fscx120\fscy120)\t(33,300,\fscx100\fscy100)}si 
+Dialogue: 0,0:00:21.86,0:00:25.44,Default,,0,0,0,fx,{\an5\pos(700,1010)\fad(0,300)}si 
+Dialogue: 0,0:00:21.04,0:00:21.86,Default,,0,0,0,fx,{\an5\pos(765,1010)\fad(300,0)}ra
+Dialogue: 0,0:00:21.86,0:00:22.11,Default,,0,0,0,fx,{\an5\pos(765,1010)\t(0,33,\fscx120\fscy120)\t(33,250,\fscx100\fscy100)}ra
+Dialogue: 0,0:00:22.11,0:00:25.44,Default,,0,0,0,fx,{\an5\pos(765,1010)\fad(0,300)}ra
+Dialogue: 0,0:00:21.04,0:00:22.11,Default,,0,0,0,fx,{\an5\pos(830,1010)\fad(300,0)}do 
+Dialogue: 0,0:00:22.11,0:00:22.62,Default,,0,0,0,fx,{\an5\pos(830,1010)\t(0,33,\fscx120\fscy120)\t(33,510,\fscx100\fscy100)}do 
+Dialogue: 0,0:00:22.62,0:00:25.44,Default,,0,0,0,fx,{\an5\pos(830,1010)\fad(0,300)}do 
+Dialogue: 0,0:00:21.04,0:00:22.62,Default,,0,0,0,fx,{\an5\pos(934,1010)\fad(300,0)}geu 
+Dialogue: 0,0:00:22.62,0:00:23.10,Default,,0,0,0,fx,{\an5\pos(934,1010)\1c&H0000FF&\t(0,33,\fscx120\fscy120)\t(33,480,\fscx100\fscy100)}geu 
+Dialogue: 0,0:00:23.10,0:00:25.44,Default,,0,0,0,fx,{\an5\pos(934,1010)\fad(0,300)}geu 
+Dialogue: 0,0:00:21.04,0:00:23.10,Default,,0,0,0,fx,{\an5\pos(1035,1010)\fad(300,0)}ae
+Dialogue: 0,0:00:23.10,0:00:23.33,Default,,0,0,0,fx,{\an5\pos(1035,1010)\t(0,33,\fscx120\fscy120)\t(33,230,\fscx100\fscy100)}ae
+Dialogue: 0,0:00:23.33,0:00:25.44,Default,,0,0,0,fx,{\an5\pos(1035,1010)\fad(0,300)}ae
+Dialogue: 0,0:00:21.04,0:00:23.33,Default,,0,0,0,fx,{\an5\pos(1102,1010)\fad(300,0)}ga 
+Dialogue: 0,0:00:23.33,0:00:23.65,Default,,0,0,0,fx,{\an5\pos(1102,1010)\t(0,33,\fscx120\fscy120)\t(33,320,\fscx100\fscy100)}ga 
+Dialogue: 0,0:00:23.65,0:00:25.44,Default,,0,0,0,fx,{\an5\pos(1102,1010)\fad(0,300)}ga 
+Dialogue: 0,0:00:21.04,0:00:23.65,Default,,0,0,0,fx,{\an5\pos(1187,1010)\fad(300,0)}na
+Dialogue: 0,0:00:23.65,0:00:24.15,Default,,0,0,0,fx,{\an5\pos(1187,1010)\t(0,33,\fscx120\fscy120)\t(33,500,\fscx100\fscy100)}na
+Dialogue: 0,0:00:24.15,0:00:25.44,Default,,0,0,0,fx,{\an5\pos(1187,1010)\fad(0,300)}na
+Dialogue: 0,0:00:21.04,0:00:24.15,Default,,0,0,0,fx,{\an5\pos(1249,1010)\fad(300,0)}ta
+Dialogue: 0,0:00:24.15,0:00:24.65,Default,,0,0,0,fx,{\an5\pos(1249,1010)\t(0,33,\fscx120\fscy120)\t(33,500,\fscx100\fscy100)}ta
+Dialogue: 0,0:00:24.65,0:00:25.44,Default,,0,0,0,fx,{\an5\pos(1249,1010)\fad(0,300)}ta
+Dialogue: 0,0:00:21.04,0:00:24.65,Default,,0,0,0,fx,{\an5\pos(1310,1010)\fad(300,0)}na
+Dialogue: 0,0:00:24.65,0:00:25.14,Default,,0,0,0,fx,{\an5\pos(1310,1010)\t(0,33,\fscx120\fscy120)\t(33,490,\fscx100\fscy100)}na
+Dialogue: 0,0:00:25.14,0:00:25.44,Default,,0,0,0,fx,{\an5\pos(1310,1010)\fad(0,300)}na
+Dialogue: 0,0:00:25.25,0:00:25.55,Default,,0,0,0,fx,{\an5\pos(599,1010)\fad(300,0)}da
+Dialogue: 0,0:00:25.55,0:00:25.78,Default,,0,0,0,fx,{\an5\pos(599,1010)\t(0,33,\fscx120\fscy120)\t(33,230,\fscx100\fscy100)}da
+Dialogue: 0,0:00:25.78,0:00:29.96,Default,,0,0,0,fx,{\an5\pos(599,1010)\fad(0,300)}da
+Dialogue: 0,0:00:25.25,0:00:25.78,Default,,0,0,0,fx,{\an5\pos(673,1010)\fad(300,0)}shi 
+Dialogue: 0,0:00:25.78,0:00:26.12,Default,,0,0,0,fx,{\an5\pos(673,1010)\1c&H00FF00&\t(0,33,\fscx120\fscy120)\t(33,340,\fscx100\fscy100)}shi 
+Dialogue: 0,0:00:26.12,0:00:29.96,Default,,0,0,0,fx,{\an5\pos(673,1010)\fad(0,300)}shi 
+Dialogue: 0,0:00:25.25,0:00:26.12,Default,,0,0,0,fx,{\an5\pos(782,1010)\fad(300,0)}ddo 
+Dialogue: 0,0:00:26.12,0:00:26.65,Default,,0,0,0,fx,{\an5\pos(782,1010)\1c&H0000FF&\t(0,33,\fscx120\fscy120)\t(33,530,\fscx100\fscy100)}ddo 
+Dialogue: 0,0:00:26.65,0:00:29.96,Default,,0,0,0,fx,{\an5\pos(782,1010)\fad(0,300)}ddo 
+Dialogue: 0,0:00:25.25,0:00:26.65,Default,,0,0,0,fx,{\an5\pos(895,1010)\fad(300,0)}nol
+Dialogue: 0,0:00:26.65,0:00:27.11,Default,,0,0,0,fx,{\an5\pos(895,1010)\1c&H00FF00&\t(0,33,\fscx120\fscy120)\t(33,460,\fscx100\fscy100)}nol
+Dialogue: 0,0:00:27.11,0:00:29.96,Default,,0,0,0,fx,{\an5\pos(895,1010)\fad(0,300)}nol
+Dialogue: 0,0:00:25.25,0:00:27.11,Default,,0,0,0,fx,{\an5\pos(984,1010)\fad(300,0)}rae
+Dialogue: 0,0:00:27.11,0:00:27.33,Default,,0,0,0,fx,{\an5\pos(984,1010)\1c&H0000FF&\t(0,33,\fscx120\fscy120)\t(33,220,\fscx100\fscy100)}rae
+Dialogue: 0,0:00:27.33,0:00:29.96,Default,,0,0,0,fx,{\an5\pos(984,1010)\fad(0,300)}rae
+Dialogue: 0,0:00:25.25,0:00:27.33,Default,,0,0,0,fx,{\an5\pos(1060,1010)\fad(300,0)}kil
+Dialogue: 0,0:00:27.33,0:00:27.54,Default,,0,0,0,fx,{\an5\pos(1060,1010)\1c&H00FF00&\t(0,33,\fscx120\fscy120)\t(33,210,\fscx100\fscy100)}kil
+Dialogue: 0,0:00:27.54,0:00:29.96,Default,,0,0,0,fx,{\an5\pos(1060,1010)\fad(0,300)}kil
+Dialogue: 0,0:00:25.25,0:00:27.54,Default,,0,0,0,fx,{\an5\pos(1106,1010)\fad(300,0)}ji 
+Dialogue: 0,0:00:27.54,0:00:27.86,Default,,0,0,0,fx,{\an5\pos(1106,1010)\1c&H0000FF&\t(0,33,\fscx120\fscy120)\t(33,320,\fscx100\fscy100)}ji 
+Dialogue: 0,0:00:27.86,0:00:29.96,Default,,0,0,0,fx,{\an5\pos(1106,1010)\fad(0,300)}ji 
+Dialogue: 0,0:00:25.25,0:00:27.86,Default,,0,0,0,fx,{\an5\pos(1189,1010)\fad(300,0)}mol
+Dialogue: 0,0:00:27.86,0:00:28.15,Default,,0,0,0,fx,{\an5\pos(1189,1010)\1c&H00FF00&\t(0,33,\fscx120\fscy120)\t(33,290,\fscx100\fscy100)}mol
+Dialogue: 0,0:00:28.15,0:00:29.96,Default,,0,0,0,fx,{\an5\pos(1189,1010)\fad(0,300)}mol
+Dialogue: 0,0:00:25.25,0:00:28.15,Default,,0,0,0,fx,{\an5\pos(1266,1010)\fad(300,0)}la
+Dialogue: 0,0:00:28.15,0:00:28.61,Default,,0,0,0,fx,{\an5\pos(1266,1010)\1c&H0000FF&\t(0,33,\fscx120\fscy120)\t(33,460,\fscx100\fscy100)}la
+Dialogue: 0,0:00:28.61,0:00:29.96,Default,,0,0,0,fx,{\an5\pos(1266,1010)\fad(0,300)}la
+Dialogue: 0,0:00:25.25,0:00:28.61,Default,,0,0,0,fx,{\an5\pos(1323,1010)\fad(300,0)}yo
+Dialogue: 0,0:00:28.61,0:00:29.66,Default,,0,0,0,fx,{\an5\pos(1323,1010)\t(0,33,\fscx120\fscy120)\t(33,1050,\fscx100\fscy100)}yo
+Dialogue: 0,0:00:29.66,0:00:29.96,Default,,0,0,0,fx,{\an5\pos(1323,1010)\fad(0,300)}yo
