@@ -2528,6 +2528,171 @@ class TestEngineIntegration:
             "A1-B2go",
         ]
 
+    def test_supports_single_loop_object_in_expressions(self) -> None:
+        engine = build_engine()
+        declarations = ParsedDeclarations(
+            syl=[
+                TemplateDeclaration(
+                    body=TemplateBody("!loop.i!/!loop.n!:"),
+                    scope=Scope.SYL,
+                    modifiers=TemplateModifiers(
+                        loops=(
+                            LoopDescriptor(
+                                name="i",
+                                iterations=3,
+                            ),
+                        ),
+                    ),
+                )
+            ]
+        )
+
+        results = engine.apply(
+            [make_single_syllable_event()],
+            declarations,
+            Metadata(res_x=1920, res_y=1080),
+            {"Default": make_style()},
+        )
+
+        assert [result.text for result in results] == [
+            "0/3:go",
+            "1/3:go",
+            "2/3:go",
+        ]
+
+    def test_supports_named_loop_object_in_expressions(self) -> None:
+        engine = build_engine()
+        declarations = ParsedDeclarations(
+            syl=[
+                TemplateDeclaration(
+                    body=TemplateBody("!loop.x.i!/!loop.x.n!:"),
+                    scope=Scope.SYL,
+                    modifiers=TemplateModifiers(
+                        loops=(
+                            LoopDescriptor(
+                                name="x",
+                                iterations=3,
+                                explicit_name="x",
+                            ),
+                        ),
+                    ),
+                )
+            ]
+        )
+
+        results = engine.apply(
+            [make_single_syllable_event()],
+            declarations,
+            Metadata(res_x=1920, res_y=1080),
+            {"Default": make_style()},
+        )
+
+        assert [result.text for result in results] == [
+            "0/3:go",
+            "1/3:go",
+            "2/3:go",
+        ]
+
+    def test_supports_multiple_named_loop_objects_in_expressions(self) -> None:
+        engine = build_engine()
+        declarations = ParsedDeclarations(
+            syl=[
+                TemplateDeclaration(
+                    body=TemplateBody("!loop.a.i!-!loop.b.i!:"),
+                    scope=Scope.SYL,
+                    modifiers=TemplateModifiers(
+                        loops=(
+                            LoopDescriptor(
+                                name="a",
+                                iterations=2,
+                                explicit_name="a",
+                            ),
+                            LoopDescriptor(
+                                name="b",
+                                iterations=2,
+                                explicit_name="b",
+                            ),
+                        ),
+                    ),
+                )
+            ]
+        )
+
+        results = engine.apply(
+            [make_single_syllable_event()],
+            declarations,
+            Metadata(res_x=1920, res_y=1080),
+            {"Default": make_style()},
+        )
+
+        assert [result.text for result in results] == [
+            "0-0:go",
+            "0-1:go",
+            "1-0:go",
+            "1-1:go",
+        ]
+
+    def test_loop_i_property_is_invalid_with_multiple_loops(self) -> None:
+        engine = build_engine()
+        declarations = ParsedDeclarations(
+            syl=[
+                TemplateDeclaration(
+                    body=TemplateBody("!loop.i!"),
+                    scope=Scope.SYL,
+                    modifiers=TemplateModifiers(
+                        loops=(
+                            LoopDescriptor(
+                                name="a",
+                                iterations=2,
+                                explicit_name="a",
+                            ),
+                            LoopDescriptor(
+                                name="b",
+                                iterations=2,
+                                explicit_name="b",
+                            ),
+                        ),
+                    ),
+                )
+            ]
+        )
+
+        with pytest.raises(TemplateRuntimeError):
+            engine.apply(
+                [make_single_syllable_event()],
+                declarations,
+                Metadata(res_x=1920, res_y=1080),
+                {"Default": make_style()},
+            )
+
+    def test_loop_flat_variable_is_not_expression_api(self) -> None:
+        engine = build_engine()
+        declarations = ParsedDeclarations(
+            syl=[
+                TemplateDeclaration(
+                    body=TemplateBody("!loop_x_i!"),
+                    scope=Scope.SYL,
+                    modifiers=TemplateModifiers(
+                        loops=(
+                            LoopDescriptor(
+                                name="x",
+                                iterations=2,
+                                explicit_name="x",
+                            ),
+                        ),
+                    ),
+                )
+            ]
+        )
+
+        with pytest.raises(TemplateRuntimeError):
+            engine.apply(
+                [make_single_syllable_event()],
+                declarations,
+                Metadata(res_x=1920, res_y=1080),
+                {"Default": make_style()},
+            )
+
     def test_loop_i_is_invalid_when_multiple_loops_are_visible(self) -> None:
         engine = build_engine()
         declarations = ParsedDeclarations(

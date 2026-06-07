@@ -476,6 +476,7 @@ _RESERVED_EXECUTION_NAMES = frozenset(
         "char",
         "layer",
         "line",
+        "loop",
         "loop_i",
         "loop_n",
         "metadata",
@@ -500,6 +501,49 @@ class _MathNamespace:
     radians = math.radians
     sin = math.sin
     sqrt = math.sqrt
+
+
+@dataclass(frozen=True, slots=True)
+class _ExpressionLoopStateObject:
+    """Read-only loop state exposed to inline expressions."""
+
+    i: int
+    n: int
+
+
+class _ExpressionLoopObject:
+    """Public `loop` object exposed to expression evaluation."""
+
+    __slots__ = ("_env",)
+
+    def __init__(self, env: Environment) -> None:
+        self._env = env
+
+    @property
+    def i(self) -> int:
+        return self._only_loop().index
+
+    @property
+    def n(self) -> int:
+        return self._only_loop().total
+
+    def __getattr__(self, name: str) -> _ExpressionLoopStateObject:
+        loop_state = self._named_loop(name)
+        return _ExpressionLoopStateObject(
+            i=loop_state.index,
+            n=loop_state.total,
+        )
+
+    def _only_loop(self) -> LoopState:
+        if len(self._env.loop_stack) == 1:
+            return self._env.loop_stack[0]
+        _raise_unavailable_attribute("loop")
+
+    def _named_loop(self, name: str) -> LoopState:
+        for loop_state in reversed(self._env.loop_stack):
+            if loop_state.name == name:
+                return loop_state
+        _raise_unavailable_attribute(f"loop.{name}")
 
 
 def _empty_expression_object_cache() -> dict[str, object]:
@@ -1304,6 +1348,8 @@ class Environment:
             namespace["syl"] = self._expression_object("syl")
         if self.char is not None:
             namespace["char"] = self._expression_object("char")
+        if self.loop_stack:
+            namespace["loop"] = self._expression_object("loop")
         return namespace
 
     def _expression_object(self, name: str) -> object:
@@ -1323,6 +1369,8 @@ class Environment:
             cached = _ExpressionSyllableObject(self)
         elif name == "char":
             cached = _ExpressionCharObject(self)
+        elif name == "loop":
+            cached = _ExpressionLoopObject(self)
         else:  # pragma: no cover - internal misuse guard
             raise KeyError(name)
 

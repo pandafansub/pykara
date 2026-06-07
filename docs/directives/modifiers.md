@@ -43,12 +43,16 @@ template syl loop 3
 template syl loop glow 2
 ```
 
-- `loop N` — repeats the template N times and exposes `loop_i` (0-based index) and `loop_n` (total).
-- `loop NAME N` — same, but exposes `loop_NAME_i` and `loop_NAME_n` instead.
+- `loop N` — repeats the template N times and exposes `$loop_i`/`$loop_n`.
+  Inside `!expr!`, use `loop.i` and `loop.n`.
+- `loop NAME N` — same, but exposes `$loop_NAME_i`/`$loop_NAME_n`.
+  Inside `!expr!`, use `loop.NAME.i` and `loop.NAME.n`.
 - `loop (EXPR)` / `loop NAME (EXPR)` — evaluates `EXPR` at runtime and
   uses the resulting positive integer.
 - Multiple named loops run as a cartesian product (every combination of their iterations).
 - Unnamed and named loops cannot be mixed.
+- Named loops cannot use `i` or `n`; those names are reserved by the `loop`
+  expression object.
 
 ## `no_merge`
 

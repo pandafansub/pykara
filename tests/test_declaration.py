@@ -123,6 +123,17 @@ class TestLoopModifier:
         with pytest.raises(ModifierParseError):
             LoopModifier().apply(["wave", "3"], current)
 
+    @pytest.mark.parametrize("name", ["i", "n"])
+    def test_rejects_names_reserved_by_loop_object(self, name: str) -> None:
+        with pytest.raises(ModifierParseError) as exc_info:
+            LoopModifier().apply([name, "3"], TemplateModifiers())
+
+        assert exc_info.value.modifier == "loop"
+        assert (
+            str(exc_info.value)
+            == f"Modifier 'loop': loop name {name!r} is reserved"
+        )
+
 
 class TestNoBlankModifier:
     def test_sets_flag_and_consumes_nothing(self) -> None:
