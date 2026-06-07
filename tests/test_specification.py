@@ -138,6 +138,7 @@ EXPECTED_EXPRESSION_OBJECTS = {
     "word",
     "syl",
     "char",
+    "loop",
     "style",
     "metadata",
     "assets",
@@ -242,6 +243,11 @@ EXPECTED_LINE_STYLE_PROPERTIES = {
 EXPECTED_METADATA_PROPERTIES = {
     "res_x",
     "res_y",
+}
+
+EXPECTED_LOOP_PROPERTIES = {
+    "i",
+    "n",
 }
 
 
@@ -436,12 +442,18 @@ class TestExpressionProperties:
             for object_name, property_name in EXPRESSION_PROPERTY_SPECIFICATIONS
             if object_name == "metadata"
         }
+        loop_properties = {
+            property_name
+            for object_name, property_name in EXPRESSION_PROPERTY_SPECIFICATIONS
+            if object_name == "loop"
+        }
         assert EXPECTED_LINE_PROPERTIES <= line_properties
         assert EXPECTED_WORD_PROPERTIES <= word_properties
         assert EXPECTED_SYL_PROPERTIES <= syl_properties
         assert EXPECTED_CHAR_PROPERTIES <= char_properties
         assert EXPECTED_LINE_STYLE_PROPERTIES <= style_properties
         assert EXPECTED_METADATA_PROPERTIES <= metadata_properties
+        assert EXPECTED_LOOP_PROPERTIES <= loop_properties
 
     def test_property_scopes_are_subsets_of_object_scopes(self) -> None:
         for (

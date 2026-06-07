@@ -13,6 +13,7 @@ from pykara.declaration._shared import (
 from pykara.errors import ModifierParseError
 
 _SNAKE_CASE_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
+_RESERVED_LOOP_NAMES = frozenset({"i", "n"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,6 +103,11 @@ class LoopModifier:
                 raise ModifierParseError(
                     "loop",
                     "cannot mix named and unnamed loop declarations",
+                )
+            if descriptor.name in _RESERVED_LOOP_NAMES:
+                raise ModifierParseError(
+                    "loop",
+                    f"loop name {descriptor.name!r} is reserved",
                 )
             if any(loop.name == descriptor.name for loop in existing_loops):
                 raise ModifierParseError(

@@ -99,6 +99,17 @@ Inside `!expr!`, runtime data is exposed through objects.
 | `x` | ASS anchor x position. |
 | `y` | ASS anchor y position. |
 
+### `loop`
+
+Available only while rendering a template with a `loop` modifier.
+
+| Property | Description |
+|----------|-------------|
+| `i` | Current loop iteration index, only when exactly one loop is active. |
+| `n` | Total loop iterations, only when exactly one loop is active. |
+| `NAME.i` | Current iteration index for the named loop `NAME`. |
+| `NAME.n` | Total iterations for the named loop `NAME`. |
+
 ### `style`
 
 | Property | Description |

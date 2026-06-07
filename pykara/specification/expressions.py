@@ -56,6 +56,13 @@ EXPRESSION_OBJECT_SPECIFICATIONS: dict[str, ExpressionObjectSpecification] = {
         available_scopes=frozenset({Scope.CHAR}),
         description="Current character available to inline expressions.",
     ),
+    "loop": ExpressionObjectSpecification(
+        name="loop",
+        available_scopes=LINE_SCOPES,
+        description=(
+            "Current template loop state available to inline expressions."
+        ),
+    ),
     "style": ExpressionObjectSpecification(
         name="style",
         available_scopes=LINE_SCOPES,
@@ -462,6 +469,27 @@ EXPRESSION_PROPERTY_SPECIFICATIONS: dict[
         available_scopes=LINE_SCOPES,
         source_variable=None,
         description="Script vertical resolution in pixels.",
+    ),
+    ("loop", "i"): ExpressionPropertySpecification(
+        object_name="loop",
+        name="i",
+        type="int",
+        available_scopes=LINE_SCOPES,
+        source_variable=None,
+        description=(
+            "Current loop iteration index, only when exactly one loop is "
+            "active."
+        ),
+    ),
+    ("loop", "n"): ExpressionPropertySpecification(
+        object_name="loop",
+        name="n",
+        type="int",
+        available_scopes=LINE_SCOPES,
+        source_variable=None,
+        description=(
+            "Total loop iterations, only when exactly one loop is active."
+        ),
     ),
     ("syl", "start"): ExpressionPropertySpecification(
         object_name="syl",
