@@ -122,7 +122,7 @@ class TestResolveFont:
         assert resolved.path == str(font_path)
         assert resolved.source == "explicit"
 
-    def test_raises_diagnostic_error_for_unknown_font(
+    def test_raises_error_for_unknown_font(
         self,
         monkeypatch: MonkeyPatch,
     ) -> None:
@@ -151,7 +151,14 @@ class TestResolveFont:
             lambda: (Path("/missing/system/fonts"),),
         )
 
-        with pytest.raises(PykaraError, match="Tried: fontconfig"):
+        with pytest.raises(
+            PykaraError,
+            match=(
+                "could not load font "
+                "'this-font-does-not-exist-1234' "
+                "to process the template"
+            ),
+        ):
             resolve_font(
                 "this-font-does-not-exist-1234",
                 is_bold=False,

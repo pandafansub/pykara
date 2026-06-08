@@ -237,7 +237,7 @@ class TestResetFontCache:
 
 class TestResolveFontPath:
     def test_raises_pykara_error_for_unknown_font(self) -> None:
-        with pytest.raises(PykaraError, match="unknown font family"):
+        with pytest.raises(PykaraError, match="could not load font"):
             _resolve_font_path(
                 "this-font-does-not-exist-1234",
                 is_bold=False,
@@ -751,7 +751,7 @@ class TestWin32Helpers:
             ),
             (
                 FakeGdi32(selected_name="Arial"),
-                "unknown font family",
+                "could not load font 'Noto Sans' to process the template",
             ),
             (
                 FakeGdi32(text_extent_ok=False),
