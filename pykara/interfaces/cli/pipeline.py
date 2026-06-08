@@ -46,7 +46,10 @@ def strip_fx_events(document: SubtitleDocument) -> SubtitleDocument:
     )
 
 
-def load_declarations(document: SubtitleDocument) -> ParsedDeclarations:
+def load_declarations(
+    document: SubtitleDocument,
+    base_dir: Path | None = None,
+) -> ParsedDeclarations:
     """Parse declarations from one loaded document.
 
     Args:
@@ -60,6 +63,7 @@ def load_declarations(document: SubtitleDocument) -> ParsedDeclarations:
         template_mod_registry=TEMPLATE_MODIFIER_REGISTRY,
         mixin_mod_registry=MIXIN_MODIFIER_REGISTRY,
         code_mod_registry=CODE_MODIFIER_REGISTRY,
+        base_dir=base_dir,
     ).parse(document.events)
 
 

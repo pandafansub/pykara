@@ -14,6 +14,11 @@ from pykara.support import (
     words,
 )
 from pykara.support.ass_tags import merge_adjacent_override_blocks
+from pykara.support.include_parser import (
+    IncludeParseError,
+    is_include_source,
+    parse_include_paths,
+)
 
 
 class TestMergeAdjacentOverrideBlocks:
@@ -40,6 +45,26 @@ class TestMergeAdjacentOverrideBlocks:
             merge_adjacent_override_blocks(r"{comment}{\blur2}go")
             == r"{comment}{\blur2}go"
         )
+
+
+class TestIncludeParser:
+    def test_detects_include_source(self) -> None:
+        assert is_include_source('include "common.py"') is True
+        assert is_include_source('include_path = "common.py"') is False
+        assert is_include_source("included = True") is False
+
+    def test_parses_string_literal_paths(self) -> None:
+        assert parse_include_paths(
+            'include "common.py", r"C:\\Karaoke\\Project\\common.py"'
+        ) == ("common.py", r"C:\Karaoke\Project\common.py")
+
+    def test_rejects_missing_path(self) -> None:
+        with pytest.raises(IncludeParseError, match="expected path"):
+            parse_include_paths("include")
+
+    def test_rejects_non_string_path(self) -> None:
+        with pytest.raises(IncludeParseError, match="string literals"):
+            parse_include_paths("include path_name")
 
 
 class TestClamp:

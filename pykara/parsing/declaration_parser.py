@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from pykara.data import Event
 from pykara.declaration import Scope
@@ -59,6 +60,7 @@ class CodeDeclaration:
     scope: Scope
     modifiers: CodeModifiers = field(default_factory=CodeModifiers)
     style: str = ""
+    base_dir: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,10 +149,12 @@ class DeclarationParser:
         template_mod_registry: ModifierRegistry[TemplateModifiers],
         mixin_mod_registry: ModifierRegistry[MixinModifiers],
         code_mod_registry: ModifierRegistry[CodeModifiers],
+        base_dir: Path | None = None,
     ) -> None:
         self._template_mod_registry = template_mod_registry
         self._mixin_mod_registry = mixin_mod_registry
         self._code_mod_registry = code_mod_registry
+        self._base_dir = base_dir
 
     def parse(self, events: list[Event]) -> ParsedDeclarations:
         """Parse template and code declarations from commented events.
@@ -258,6 +262,7 @@ class DeclarationParser:
             scope=scope,
             modifiers=modifiers,
             style=declaration_style,
+            base_dir=self._base_dir,
         )
 
     def _parse_style_selector(
