@@ -9,6 +9,7 @@ import re
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import replace
+from pathlib import Path
 from types import CodeType
 from typing import cast
 
@@ -24,6 +25,9 @@ from pykara.engine.variable_context import (
 from pykara.errors import (
     BoundMethodInExpressionError,
     EngineError,
+    IncludeCollisionError,
+    IncludeReadError,
+    InvalidIncludeError,
     ReservedNameError,
     TemplateCodeError,
     TemplateRuntimeError,
@@ -51,6 +55,11 @@ from pykara.processing.line_preprocessor import (
 from pykara.processing.text_renderer import TextRenderer
 from pykara.support.ass_tags import merge_adjacent_override_blocks
 from pykara.support.code_analysis import collect_assigned_names
+from pykara.support.include_parser import (
+    IncludeParseError,
+    is_include_source,
+    parse_include_paths,
+)
 
 _PLAIN_WORD_PATTERN = re.compile(r"[ \t]*[^ \t]+")
 _MOVE_TAG_RE = re.compile(r"\\move\s*\(")
@@ -64,9 +73,30 @@ class _CodeRunner:
         self._compiled_code_cache: dict[str, CodeType] = {}
         self._assigned_name_cache: dict[str, frozenset[str]] = {}
 
-    def run(self, source: str, env: Environment) -> None:
+    def run(
+        self,
+        source: str,
+        env: Environment,
+        *,
+        base_dir: Path | None = None,
+    ) -> None:
+        include_paths = self._include_paths(source)
+        if include_paths is not None:
+            self._run_includes(source, include_paths, env, base_dir)
+            return
+
+        assigned_names = self._assigned_names(source)
+        self._validate_ass_include_collisions(assigned_names, source, env)
+        self._run_python_source(source, env, assigned_names)
+        env.user_code_names.update(assigned_names - {"__seed__"})
+
+    def _run_python_source(
+        self,
+        source: str,
+        env: Environment,
+        assigned_names: frozenset[str],
+    ) -> None:
         try:
-            assigned_names = self._assigned_names(source)
             self._validate_reserved_assignments(
                 assigned_names,
                 source,
@@ -107,6 +137,83 @@ class _CodeRunner:
                 )
             }
         )
+
+    def _run_includes(
+        self,
+        include_source: str,
+        include_paths: tuple[str, ...],
+        env: Environment,
+        base_dir: Path | None,
+    ) -> None:
+        if env.active_code_scope is not Scope.SETUP:
+            raise InvalidIncludeError(
+                include_source,
+                "include is only allowed in code setup",
+            )
+        for include_path in include_paths:
+            path = self._resolve_include_path(include_path, base_dir)
+            source = self._read_include(path)
+            assigned_names = self._assigned_names(source)
+            self._validate_include_collisions(
+                assigned_names,
+                include_source,
+                path,
+                env,
+            )
+            self._run_python_source(source, env, assigned_names)
+            env.include_names.update(assigned_names - {"__seed__"})
+
+    def _include_paths(self, source: str) -> tuple[str, ...] | None:
+        if not is_include_source(source):
+            return None
+        try:
+            return parse_include_paths(source)
+        except IncludeParseError as error:
+            raise InvalidIncludeError(source, str(error)) from error
+
+    def _resolve_include_path(
+        self,
+        include_path: str,
+        base_dir: Path | None,
+    ) -> Path:
+        path = Path(include_path)
+        if not path.is_absolute():
+            path = (base_dir or Path.cwd()) / path
+        resolved = path.resolve(strict=False)
+        if resolved.suffix != ".py":
+            raise IncludeReadError(
+                resolved,
+                "Include path must point to a .py file",
+            )
+        return resolved
+
+    def _read_include(self, path: Path) -> str:
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError as error:
+            raise IncludeReadError(path, str(error)) from error
+
+    def _validate_ass_include_collisions(
+        self,
+        assigned_names: frozenset[str],
+        source: str,
+        env: Environment,
+    ) -> None:
+        for name in sorted((assigned_names - {"__seed__"}) & env.include_names):
+            raise IncludeCollisionError(name, "include", source)
+
+    def _validate_include_collisions(
+        self,
+        assigned_names: frozenset[str],
+        include_source: str,
+        path: Path,
+        env: Environment,
+    ) -> None:
+        declared_names = assigned_names - {"__seed__"}
+        for name in sorted(declared_names & env.include_names):
+            raise IncludeCollisionError(name, "include", str(path))
+        for name in sorted(declared_names & env.user_code_names):
+            raise IncludeCollisionError(name, include_source, str(path))
 
     def _validate_reserved_assignments(
         self,
@@ -319,7 +426,11 @@ class Engine:
     ) -> None:
         env.declaration = "code"
         env.active_code_scope = declaration.scope
-        self._code_runner.run(declaration.body.source, env)
+        self._code_runner.run(
+            declaration.body.source,
+            env,
+            base_dir=declaration.base_dir,
+        )
 
     def _render_line_template(
         self,

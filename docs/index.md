@@ -37,6 +37,7 @@ pykara input.ass output.ass --generated-only
 - [Types](./directives/types.md) — `template`, `mixin`, and `code`.
 - [Scopes](./directives/scopes.md) — Execution frequency and scope rules.
 - [Variables](./directives/variables.md) — Complete `$variable` reference.
+- [Include](./directives/include.md) — Load shared Python setup files.
 - [Objects](./directives/objects.md) — Properties available in `!expr!`.
 - [Modifiers](./directives/modifiers.md) — Directive modifier keywords.
 - [Setup Scope](./directives/setup-scope.md) — One-time setup before any karaoke line runs.

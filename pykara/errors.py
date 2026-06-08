@@ -167,6 +167,44 @@ class TemplateRuntimeError(EngineError):
         super().__init__(f"Runtime error in template: {cause}")
 
 
+class IncludeError(EngineError):
+    """Base for errors raised while resolving code includes."""
+
+
+class InvalidIncludeError(IncludeError):
+    """Raised when an include declaration has invalid syntax."""
+
+    def __init__(self, source: str, message: str) -> None:
+        self.source = source
+        super().__init__(f"Invalid include declaration: {message}")
+
+
+class IncludeReadError(IncludeError):
+    """Raised when an include file cannot be read."""
+
+    def __init__(self, path: Path, message: str = "") -> None:
+        self.path = path
+        super().__init__(message or f"Could not read include file: {path}")
+
+
+class IncludeCollisionError(IncludeError):
+    """Raised when include and ASS code declare the same name."""
+
+    def __init__(
+        self,
+        name: str,
+        first_source: str,
+        second_source: str,
+    ) -> None:
+        self.name = name
+        self.first_source = first_source
+        self.second_source = second_source
+        super().__init__(
+            f"Include name {name!r} collides between "
+            f"{first_source!r} and {second_source!r}"
+        )
+
+
 class UnknownStyleReferenceError(EngineError):
     """Raised when a styles modifier references a style that does not exist."""
 

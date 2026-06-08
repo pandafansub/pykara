@@ -6,8 +6,11 @@ from __future__ import annotations
 
 import builtins
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from types import CodeType
+from typing import cast
 
 import pytest
 
@@ -25,6 +28,8 @@ from pykara.engine.engine import Engine, _CodeRunner
 from pykara.engine.variable_context import Environment, GeneratedLine
 from pykara.errors import (
     BoundMethodInExpressionError,
+    IncludeCollisionError,
+    InvalidIncludeError,
     ReservedNameError,
     TemplateCodeError,
     TemplateRuntimeError,
@@ -236,6 +241,12 @@ def make_env() -> Environment:
         declaration="code",
         rng=random.Random(1),  # noqa: S311
     )
+
+
+def make_setup_env() -> Environment:
+    env = make_env()
+    env.active_code_scope = Scope.SETUP
+    return env
 
 
 class TestCodeRunnerCaching:
@@ -488,6 +499,109 @@ class TestCodeRunner:
             "mapping",
             "operating_system",
         } <= names
+
+    def test_include_executes_python_file(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        include_path = tmp_path / "common.py"
+        include_path.write_text(
+            "accent = '&H00FFFFFF'\n"
+            "def label(value):\n"
+            "    return f'[{value}]'\n",
+            encoding="utf-8",
+        )
+        runner = _CodeRunner()
+        env = make_setup_env()
+
+        runner.run('include "common.py"', env, base_dir=tmp_path)
+
+        assert env.user_namespace["accent"] == "&H00FFFFFF"
+        label = cast(Callable[[str], str], env.user_namespace["label"])
+        assert label("go") == "[go]"
+
+    def test_include_accepts_multiple_string_literal_paths(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "base.py").write_text("base = 1\n", encoding="utf-8")
+        (tmp_path / "colors.py").write_text(
+            "color_name = 'red'\n",
+            encoding="utf-8",
+        )
+        runner = _CodeRunner()
+        env = make_setup_env()
+
+        runner.run(
+            'include "base.py", r"colors.py"',
+            env,
+            base_dir=tmp_path,
+        )
+
+        assert env.user_namespace["base"] == 1
+        assert env.user_namespace["color_name"] == "red"
+
+    def test_include_rejects_reserved_names(self, tmp_path: Path) -> None:
+        include_path = tmp_path / "bad.py"
+        include_path.write_text("color = 'bad'\n", encoding="utf-8")
+        runner = _CodeRunner()
+
+        with pytest.raises(ReservedNameError, match="reserved name 'color'"):
+            runner.run('include "bad.py"', make_setup_env(), base_dir=tmp_path)
+
+    def test_include_rejects_ass_code_collision(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        include_path = tmp_path / "common.py"
+        include_path.write_text("accent = 'red'\n", encoding="utf-8")
+        runner = _CodeRunner()
+        env = make_setup_env()
+
+        runner.run('include "common.py"', env, base_dir=tmp_path)
+
+        with pytest.raises(IncludeCollisionError, match="accent"):
+            runner.run("accent = 'blue'", env)
+
+    def test_include_rejects_collision_with_existing_ass_code(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        include_path = tmp_path / "common.py"
+        include_path.write_text("accent = 'red'\n", encoding="utf-8")
+        runner = _CodeRunner()
+        env = make_setup_env()
+        runner.run("accent = 'blue'", env)
+
+        with pytest.raises(IncludeCollisionError, match="accent"):
+            runner.run('include "common.py"', env, base_dir=tmp_path)
+
+    def test_include_rejects_duplicate_include_names(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "one.py").write_text("accent = 'red'\n", encoding="utf-8")
+        (tmp_path / "two.py").write_text("accent = 'blue'\n", encoding="utf-8")
+        runner = _CodeRunner()
+
+        with pytest.raises(IncludeCollisionError, match="accent"):
+            runner.run(
+                'include "one.py", "two.py"',
+                make_setup_env(),
+                base_dir=tmp_path,
+            )
+
+    def test_include_rejects_non_setup_scope(self, tmp_path: Path) -> None:
+        (tmp_path / "common.py").write_text(
+            "accent = 'red'\n",
+            encoding="utf-8",
+        )
+        runner = _CodeRunner()
+        env = make_env()
+        env.active_code_scope = Scope.SYL
+
+        with pytest.raises(InvalidIncludeError, match="code setup"):
+            runner.run('include "common.py"', env, base_dir=tmp_path)
 
 
 class TestEngineInternalBranches:

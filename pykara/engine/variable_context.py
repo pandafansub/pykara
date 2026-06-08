@@ -60,6 +60,14 @@ def _empty_user_namespace() -> dict[str, object]:
     return {}
 
 
+def _empty_user_code_names() -> set[str]:
+    return set()
+
+
+def _empty_include_names() -> set[str]:
+    return set()
+
+
 def _empty_loop_stack() -> list[LoopState]:
     return []
 
@@ -1217,6 +1225,8 @@ class Environment:
     user_namespace: dict[str, object] = field(
         default_factory=_empty_user_namespace
     )
+    user_code_names: set[str] = field(default_factory=_empty_user_code_names)
+    include_names: set[str] = field(default_factory=_empty_include_names)
     _function_namespace_cache: dict[str, dict[str, object]] = field(
         default_factory=_empty_function_namespace_cache
     )

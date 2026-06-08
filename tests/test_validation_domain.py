@@ -449,6 +449,32 @@ class TestCodeRules:
     def test_valid_python_syntax_rule_accepts_valid_code(self) -> None:
         assert ValidPythonSyntaxRule().check(make_code_declaration()) is None
 
+    def test_valid_python_syntax_rule_accepts_include_body(self) -> None:
+        violation = ValidPythonSyntaxRule().check(
+            replace(
+                make_code_declaration(),
+                scope=Scope.SETUP,
+                body=CodeBody('include "common.py", r"C:\\shared\\base.py"'),
+            )
+        )
+
+        assert violation is None
+
+    def test_valid_python_syntax_rule_rejects_include_outside_setup(
+        self,
+    ) -> None:
+        violation = ValidPythonSyntaxRule().check(
+            replace(
+                make_code_declaration(),
+                scope=Scope.SYL,
+                body=CodeBody('include "common.py"'),
+            )
+        )
+
+        assert violation is not None
+        assert violation.code == "code.python_syntax"
+        assert "only allowed in setup" in violation.message
+
     def test_valid_python_syntax_rule_reports_invalid_code(self) -> None:
         violation = ValidPythonSyntaxRule().check(
             replace(

@@ -83,7 +83,7 @@ def main() -> int:
 
     try:
         document = load_document(args.input)
-        declarations = load_declarations(document)
+        declarations = load_declarations(document, base_dir=args.input.parent)
         report = run_validation(document, declarations)
     except DocumentReadError as error:
         print(
