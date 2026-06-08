@@ -56,31 +56,5 @@ Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code setup,include "C:\\Karaoke\
 - Included code uses the same safe execution namespace as `code` directives.
 - Included code cannot assign to Pykara names such as `line`, `syl`, `style`,
   `color`, `shape`, `random`, `assets`, or built-ins such as `range`.
-- Pykara raises an error when an included file and `.ass` code declare the
-  same name.
-- Pykara raises an error when two included files declare the same name.
-
-## Valid Example
-
-```ass
-Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code setup,include "config.py"
-Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl,{\bord$outline_size\1c$main_color}
-```
-
-```python
-main_color = color.rgb_to_ass(255, 200, 0)
-outline_size = 3
-```
-
-## Invalid Example
-
-This fails because both files declare `main_color`.
-
-```ass
-Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code setup,include "config.py"
-Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code setup,main_color = color.rgb_to_ass(0, 0, 0)
-```
-
-```python
-main_color = color.rgb_to_ass(255, 200, 0)
-```
+- Pykara raises an error when any two sources (included files or `.ass` code)
+  declare the same name.
