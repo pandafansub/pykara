@@ -15,7 +15,10 @@ from typing import Any, Protocol, cast
 
 from pykara.data import Style
 from pykara.errors import DependencyUnavailableError, PykaraError
-from pykara.processing.font_resolver import resolve_font
+from pykara.processing.font_resolver import (
+    font_load_error_message,
+    resolve_font,
+)
 
 platform = sys.platform
 
@@ -621,11 +624,7 @@ def _measure_backend_win32(
                         "FontMetricsProvider backend error: GetTextFaceW failed"
                     )
                 if selected_name.value.casefold() != style.fontname.casefold():
-                    raise PykaraError(
-                        "FontMetricsProvider: unknown font family "
-                        f"{style.fontname!r}. Windows selected "
-                        f"{selected_name.value!r} instead."
-                    )
+                    raise PykaraError(font_load_error_message(style.fontname))
 
                 size = SIZE()
 

@@ -110,8 +110,13 @@ def _iter_font_files(directories: tuple[Path, ...]) -> list[Path]:
     return files
 
 
-def _describe_dirs(label: str, directories: tuple[Path, ...]) -> str:
-    return f"{label}: " + ", ".join(str(path) for path in directories)
+def font_load_error_message(family_name: str) -> str:
+    """Return the public message for a template font lookup failure."""
+
+    return (
+        "FontMetricsProvider: could not load font "
+        f"{family_name!r} to process the template."
+    )
 
 
 def _resolve_from_directories(
@@ -310,8 +315,6 @@ def resolve_font(
 ) -> ResolvedFont:
     """Resolve a concrete font path or raise a diagnostic error."""
 
-    attempts: list[str] = []
-
     explicit = _resolve_from_directories(
         family_name,
         is_bold=is_bold,
@@ -321,8 +324,6 @@ def resolve_font(
     )
     if explicit is not None:
         return explicit
-    if font_dirs:
-        attempts.append(_describe_dirs("explicit font dirs", font_dirs))
 
     if platform == "linux":
         fontconfig = _resolve_with_fontconfig(
@@ -332,7 +333,6 @@ def resolve_font(
         )
         if fontconfig is not None:
             return fontconfig
-        attempts.append("fontconfig")
 
     if platform == "darwin":
         coretext = _resolve_with_coretext(
@@ -342,7 +342,6 @@ def resolve_font(
         )
         if coretext is not None:
             return coretext
-        attempts.append("CoreText")
 
     user_dirs = default_user_font_dirs()
     user = _resolve_from_directories(
@@ -354,7 +353,6 @@ def resolve_font(
     )
     if user is not None:
         return user
-    attempts.append(_describe_dirs("user font dirs", user_dirs))
 
     system_dirs = default_system_font_dirs()
     system = _resolve_from_directories(
@@ -366,7 +364,6 @@ def resolve_font(
     )
     if system is not None:
         return system
-    attempts.append(_describe_dirs("system font dirs", system_dirs))
 
     matplotlib = _resolve_with_matplotlib(
         family_name,
@@ -375,9 +372,5 @@ def resolve_font(
     )
     if matplotlib is not None:
         return matplotlib
-    attempts.append("matplotlib")
 
-    raise PykaraError(
-        "FontMetricsProvider: unknown font family "
-        f"{family_name!r}. Tried: {'; '.join(attempts)}."
-    )
+    raise PykaraError(font_load_error_message(family_name))
