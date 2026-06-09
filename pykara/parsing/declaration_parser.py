@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from dataclasses import dataclass, field
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
+from pykara.adapters.input.sub_station_alpha import SubStationAlphaReader
 from pykara.data import Event
 from pykara.declaration import Scope
 from pykara.declaration._shared import ModifierRegistry
@@ -14,17 +15,21 @@ from pykara.declaration.mixin import MixinBody, MixinModifiers
 from pykara.declaration.template import TemplateBody, TemplateModifiers
 from pykara.errors import (
     DeclarativeParseError,
+    DocumentReadError,
     InternalConsistencyError,
+    PresetParseError,
     UnknownModifierError,
 )
 from pykara.specification import DECLARATIONS, SCOPE_SPECIFICATIONS
+from pykara.support.preset_parser import (
+    PreservePresetStyles,
+    PresetForStyles,
+    PresetStyleTarget,
+    parse_preset_reference,
+)
 
 
 def _empty_code_declarations() -> list[CodeDeclaration]:
-    return []
-
-
-def _empty_scoped_declarations() -> list[TemplateDeclaration | CodeDeclaration]:
     return []
 
 
@@ -74,6 +79,14 @@ class MixinDeclaration:
     actor: str = ""
 
 
+Declaration = TemplateDeclaration | CodeDeclaration | MixinDeclaration
+ScopedDeclaration = TemplateDeclaration | CodeDeclaration
+
+
+def _empty_scoped_declarations() -> list[ScopedDeclaration]:
+    return []
+
+
 @dataclass(slots=True)
 class ParsedDeclarations:
     """Parsed declarations grouped by execution scope."""
@@ -81,13 +94,13 @@ class ParsedDeclarations:
     setup: list[CodeDeclaration] = field(
         default_factory=_empty_code_declarations
     )
-    line: list[TemplateDeclaration | CodeDeclaration] = field(
+    line: list[ScopedDeclaration] = field(
         default_factory=_empty_scoped_declarations
     )
-    word: list[TemplateDeclaration | CodeDeclaration] = field(
+    word: list[ScopedDeclaration] = field(
         default_factory=_empty_scoped_declarations
     )
-    syl: list[TemplateDeclaration | CodeDeclaration] = field(
+    syl: list[ScopedDeclaration] = field(
         default_factory=_empty_scoped_declarations
     )
     char: list[TemplateDeclaration] = field(
@@ -109,7 +122,7 @@ class ParsedDeclarations:
 
     def iter_scoped_declarations(
         self,
-    ) -> Iterable[TemplateDeclaration | CodeDeclaration]:
+    ) -> Iterable[ScopedDeclaration]:
         """Yield template and code declarations in validation order."""
 
         yield from self.line
@@ -131,6 +144,20 @@ class ParsedDeclarations:
         for declaration in self.iter_scoped_declarations():
             if isinstance(declaration, CodeDeclaration):
                 yield declaration
+
+    def iter_non_setup_declarations(
+        self,
+    ) -> Iterable[Declaration]:
+        """Yield every non-setup declaration in execution order."""
+
+        yield from self.line
+        yield from self.syl
+        yield from self.word
+        yield from self.char
+        yield from self.mixin_line
+        yield from self.mixin_syl
+        yield from self.mixin_word
+        yield from self.mixin_char
 
     def iter_mixin_declarations(self) -> Iterable[MixinDeclaration]:
         """Yield all mixin declarations in scope order."""
@@ -170,10 +197,33 @@ class DeclarationParser:
                 or contains unsupported tokens.
         """
 
-        parsed = ParsedDeclarations()
+        return self._parse_events(
+            events,
+            base_dir=self._base_dir,
+            preset_stack=(),
+        )
 
+    def _parse_events(
+        self,
+        events: list[Event],
+        *,
+        base_dir: Path | None,
+        preset_stack: tuple[Path, ...],
+    ) -> ParsedDeclarations:
+        """Parse declarations and recursively expand preset directives."""
+
+        parsed = ParsedDeclarations()
         for event in events:
-            declaration = self._parse_event(event)
+            if self._is_preset_event(event):
+                self._append_preset_declarations(
+                    parsed=parsed,
+                    event=event,
+                    base_dir=base_dir,
+                    preset_stack=preset_stack,
+                )
+                continue
+
+            declaration = self._parse_event(event, base_dir=base_dir)
             if declaration is None:
                 continue
 
@@ -183,8 +233,11 @@ class DeclarationParser:
         return parsed
 
     def _parse_event(
-        self, event: Event
-    ) -> TemplateDeclaration | CodeDeclaration | MixinDeclaration | None:
+        self,
+        event: Event,
+        *,
+        base_dir: Path | None,
+    ) -> Declaration | None:
         """Parse one event when it contains a supported declaration."""
 
         if not event.comment:
@@ -262,8 +315,206 @@ class DeclarationParser:
             scope=scope,
             modifiers=modifiers,
             style=declaration_style,
-            base_dir=self._base_dir,
+            base_dir=base_dir,
         )
+
+    def _is_preset_event(self, event: Event) -> bool:
+        """Return whether one event is a preset directive."""
+
+        return event.comment and event.effect.strip().lower() == "preset"
+
+    def _append_preset_declarations(
+        self,
+        *,
+        parsed: ParsedDeclarations,
+        event: Event,
+        base_dir: Path | None,
+        preset_stack: tuple[Path, ...],
+    ) -> None:
+        """Read and append declarations from one preset directive."""
+
+        try:
+            reference = parse_preset_reference(event.text)
+        except PresetParseError as error:
+            raise DeclarativeParseError(
+                effect_field=event.effect,
+                message=f"Invalid preset declaration: {error}",
+            ) from error
+
+        preset_path = self._resolve_preset_path(reference.path, base_dir)
+        if preset_path in preset_stack:
+            chain = " -> ".join(
+                str(path) for path in (*preset_stack, preset_path)
+            )
+            raise DeclarativeParseError(
+                effect_field=event.effect,
+                message=f"Preset cycle detected: {chain}",
+            )
+
+        try:
+            document = SubStationAlphaReader().read(
+                preset_path,
+                stop_at_generated_fx=True,
+            )
+        except DocumentReadError as error:
+            raise DeclarativeParseError(
+                effect_field=event.effect,
+                message=f"Could not read preset file: {error.path}",
+            ) from error
+
+        preset_parsed = self._parse_events(
+            document.events,
+            base_dir=preset_path.parent,
+            preset_stack=(*preset_stack, preset_path),
+        )
+        self._append_targeted_preset(
+            parsed=parsed,
+            preset=reference.target,
+            declarations=preset_parsed,
+        )
+
+    def _resolve_preset_path(
+        self,
+        path: str,
+        base_dir: Path | None,
+    ) -> Path:
+        """Resolve a preset path relative to the declaring document."""
+
+        path_obj = Path(path)
+        if path_obj.suffix.lower() != ".ass":
+            raise DeclarativeParseError(
+                effect_field="preset",
+                message="Preset paths must use the '.ass' extension",
+            )
+        if path_obj.is_absolute() or base_dir is None:
+            return path_obj.resolve(strict=False)
+        return (base_dir / path_obj).resolve(strict=False)
+
+    def _append_targeted_preset(
+        self,
+        *,
+        parsed: ParsedDeclarations,
+        preset: PresetStyleTarget,
+        declarations: ParsedDeclarations,
+    ) -> None:
+        """Append preset declarations after applying style targeting."""
+
+        if isinstance(preset, PreservePresetStyles):
+            self._append_declarations(parsed, declarations)
+            parsed.active_styles.update(declarations.active_styles)
+            return
+
+        self._append_setup_declarations(parsed, declarations)
+        if isinstance(preset, PresetForStyles):
+            for style in preset.styles:
+                self._append_transformed_declarations(
+                    parsed,
+                    declarations,
+                    lambda declaration, style=style: self._retarget_declaration(
+                        declaration, style
+                    ),
+                )
+                parsed.active_styles.add(style)
+            return
+
+        style_map = dict(preset.styles)
+        self._validate_preset_style_map_sources(declarations, style_map)
+        self._append_transformed_declarations(
+            parsed,
+            declarations,
+            lambda declaration: self._map_declaration_style(
+                declaration,
+                style_map,
+            ),
+        )
+        parsed.active_styles.update(style_map.values())
+
+    def _append_declarations(
+        self,
+        target: ParsedDeclarations,
+        source: ParsedDeclarations,
+    ) -> None:
+        """Append declarations from ``source`` into ``target``."""
+
+        self._append_setup_declarations(target, source)
+        for declaration in source.iter_non_setup_declarations():
+            self._append_declaration(target, declaration)
+
+    def _append_setup_declarations(
+        self,
+        target: ParsedDeclarations,
+        source: ParsedDeclarations,
+    ) -> None:
+        """Append setup declarations once for preset imports."""
+
+        for declaration in source.setup:
+            self._append_declaration(target, declaration)
+
+    def _append_transformed_declarations(
+        self,
+        target: ParsedDeclarations,
+        source: ParsedDeclarations,
+        transform: Callable[[Declaration], Declaration],
+    ) -> None:
+        """Append transformed non-setup declarations."""
+
+        for declaration in source.iter_non_setup_declarations():
+            self._append_declaration(target, transform(declaration))
+
+    def _map_declaration_style(
+        self,
+        declaration: Declaration,
+        style_map: dict[str, str],
+    ) -> Declaration:
+        """Return a declaration copy with mapped style when applicable."""
+
+        if declaration.style not in style_map:
+            return declaration
+        return replace(declaration, style=style_map[declaration.style])
+
+    def _validate_preset_style_map_sources(
+        self,
+        declarations: ParsedDeclarations,
+        style_map: dict[str, str],
+    ) -> None:
+        """Ensure every mapped preset source style exists in the preset."""
+
+        preset_styles = {
+            declaration.style
+            for declaration in declarations.iter_non_setup_declarations()
+            if declaration.style
+        }
+        missing_sources = tuple(
+            style for style in style_map if style not in preset_styles
+        )
+        if not missing_sources:
+            return
+        missing = ", ".join(repr(style) for style in missing_sources)
+        raise DeclarativeParseError(
+            effect_field="preset",
+            message=f"Preset style map source not found: {missing}",
+        )
+
+    def _retarget_declaration(
+        self,
+        declaration: Declaration,
+        style: str,
+    ) -> Declaration:
+        """Return a declaration copy forced to one concrete style."""
+
+        if isinstance(declaration, TemplateDeclaration):
+            return replace(
+                declaration,
+                style=style,
+                modifiers=replace(declaration.modifiers, styles=None),
+            )
+        if isinstance(declaration, CodeDeclaration):
+            return replace(
+                declaration,
+                style=style,
+                modifiers=replace(declaration.modifiers, styles=None),
+            )
+        return replace(declaration, style=style)
 
     def _parse_style_selector(
         self,

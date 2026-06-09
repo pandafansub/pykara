@@ -13,6 +13,7 @@ from pykara.validation.reports import ValidationReport, Violation
 from pykara.validation.rules.cross_rules import (
     AllowedVariableScopeRule,
     BareStringArgumentReference,
+    DeclarationStyleReference,
     EventStyleReference,
     ExistingStyleRule,
     FxModifierScopeRule,
@@ -56,7 +57,7 @@ class CrossValidator:
             Validation report for cross-cutting rules.
         """
         violations = (
-            *self._validate_style_references(document),
+            *self._validate_style_references(document, declarations),
             *self._validate_template_variables(declarations),
             *self._validate_mixin_variables(declarations),
             *self._validate_quoted_string_arguments(declarations),
@@ -69,21 +70,35 @@ class CrossValidator:
     def _validate_style_references(
         self,
         document: SubtitleDocument,
+        declarations: ParsedDeclarations,
     ) -> tuple[Violation, ...]:
         available_styles = frozenset(document.styles)
-        return tuple(
-            violation
-            for event in document.events
-            if (
-                violation := self._style_rule.check(
-                    EventStyleReference(
-                        event=event,
-                        available_styles=available_styles,
-                    )
+        violations: list[Violation] = []
+        for event in document.events:
+            violation = self._style_rule.check(
+                EventStyleReference(
+                    event=event,
+                    available_styles=available_styles,
                 )
             )
-            is not None
-        )
+            if violation is not None:
+                violations.append(violation)
+
+        for declaration in (
+            *declarations.iter_scoped_declarations(),
+            *declarations.iter_mixin_declarations(),
+        ):
+            if not declaration.style:
+                continue
+            violation = self._style_rule.check(
+                DeclarationStyleReference(
+                    declaration=declaration,
+                    available_styles=available_styles,
+                )
+            )
+            if violation is not None:
+                violations.append(violation)
+        return tuple(violations)
 
     def _validate_template_variables(
         self,

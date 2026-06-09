@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from pykara.errors import PykaraError
+from pykara.errors import IncludeParseError, PykaraError
 from pykara.support import (
     clamp,
     headtail,
@@ -15,7 +15,6 @@ from pykara.support import (
 )
 from pykara.support.ass_tags import merge_adjacent_override_blocks
 from pykara.support.include_parser import (
-    IncludeParseError,
     is_include_source,
     parse_include_paths,
 )

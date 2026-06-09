@@ -2,18 +2,30 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from pykara.adapters import SubtitleDocument
 from pykara.data import Event, Metadata, Style
 from pykara.declaration import Scope
-from pykara.declaration.code import CodeBody, CodeModifiers
-from pykara.declaration.mixin import MixinBody, MixinModifiers
+from pykara.declaration.code import (
+    CODE_MODIFIER_REGISTRY,
+    CodeBody,
+    CodeModifiers,
+)
+from pykara.declaration.mixin import (
+    MIXIN_MODIFIER_REGISTRY,
+    MixinBody,
+    MixinModifiers,
+)
 from pykara.declaration.template import (
+    TEMPLATE_MODIFIER_REGISTRY,
     LoopDescriptor,
     TemplateBody,
     TemplateModifiers,
 )
 from pykara.parsing import (
     CodeDeclaration,
+    DeclarationParser,
     MixinDeclaration,
     ParsedDeclarations,
     TemplateDeclaration,
@@ -22,9 +34,9 @@ from pykara.validation.reports import Severity, ValidationReport
 from pykara.validation.validators import CrossValidator, DocumentValidator
 
 
-def make_style() -> Style:
+def make_style(name: str = "Default") -> Style:
     return Style(
-        name="Default",
+        name=name,
         fontname="Arial",
         fontsize=42.0,
         primary_colour="&H00FFFFFF",
@@ -96,12 +108,14 @@ def make_mixin_declaration(
     scope: Scope = Scope.SYL,
     modifiers: MixinModifiers | None = None,
     actor: str = "lead",
+    style: str = "",
 ) -> MixinDeclaration:
     return MixinDeclaration(
         body=MixinBody(text),
         scope=scope,
         modifiers=modifiers or MixinModifiers(),
         actor=actor,
+        style=style,
     )
 
 
@@ -109,16 +123,67 @@ def make_code_declaration(
     *,
     source: str = "counter = 1",
     scope: Scope = Scope.SYL,
+    style: str = "",
 ) -> CodeDeclaration:
-    return CodeDeclaration(body=CodeBody(source), scope=scope)
+    return CodeDeclaration(body=CodeBody(source), scope=scope, style=style)
 
 
-def make_document(*, events: list[Event] | None = None) -> SubtitleDocument:
-    style = make_style()
+def make_document(
+    *,
+    events: list[Event] | None = None,
+    extra_styles: tuple[Style, ...] = (),
+) -> SubtitleDocument:
+    base_style = make_style()
     return SubtitleDocument(
         metadata=Metadata(res_x=1920, res_y=1080),
-        styles={style.name: style},
+        styles={
+            base_style.name: base_style,
+            **{style.name: style for style in extra_styles},
+        },
         events=events or [make_event()],
+    )
+
+
+def make_parser(base_dir: Path) -> DeclarationParser:
+    return DeclarationParser(
+        template_mod_registry=TEMPLATE_MODIFIER_REGISTRY,
+        mixin_mod_registry=MIXIN_MODIFIER_REGISTRY,
+        code_mod_registry=CODE_MODIFIER_REGISTRY,
+        base_dir=base_dir,
+    )
+
+
+def write_preset(path: Path, lines: list[str]) -> None:
+    path.write_text(
+        "\n".join(
+            [
+                "[Script Info]",
+                "ScriptType: v4.00+",
+                "",
+                "[V4+ Styles]",
+                (
+                    "Format: Name, Fontname, Fontsize, PrimaryColour, "
+                    "SecondaryColour, OutlineColour, BackColour, Bold, "
+                    "Italic, Underline, StrikeOut, ScaleX, ScaleY, "
+                    "Spacing, Angle, BorderStyle, Outline, Shadow, "
+                    "Alignment, MarginL, MarginR, MarginV, Encoding"
+                ),
+                (
+                    "Style: Preset Romaji,Arial,40,&H00FFFFFF,&H0000FFFF,"
+                    "&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,1,2,"
+                    "10,10,20,1"
+                ),
+                "",
+                "[Events]",
+                (
+                    "Format: Layer, Start, End, Style, Name, MarginL, "
+                    "MarginR, MarginV, Effect, Text"
+                ),
+                *lines,
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
     )
 
 
@@ -141,6 +206,117 @@ class TestCrossValidator:
         assert tuple(violation.code for violation in report.violations) == (
             "cross.style_exists",
         )
+
+    def test_reports_missing_declaration_styles(self) -> None:
+        declarations = ParsedDeclarations(
+            syl=[
+                make_template_declaration(style="Missing"),
+                make_code_declaration(style="Missing"),
+            ],
+            mixin_syl=[make_mixin_declaration(style="Missing")],
+        )
+
+        report = CrossValidator().validate(
+            make_document(extra_styles=(make_style("Alt"),)),
+            declarations,
+        )
+
+        assert tuple(violation.code for violation in report.errors) == (
+            "cross.style_exists",
+            "cross.style_exists",
+            "cross.style_exists",
+        )
+        assert tuple(violation.location for violation in report.errors) == (
+            "declaration.style",
+            "declaration.style",
+            "declaration.style",
+        )
+
+    def test_reports_missing_preserved_preset_style(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        write_preset(
+            tmp_path / "pop.ass",
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Preset Romaji,,"
+                    "0,0,0,template syl,pop"
+                )
+            ],
+        )
+        declarations = make_parser(tmp_path).parse(
+            [make_event(effect="preset", text='"pop.ass"', comment=True)]
+        )
+
+        report = CrossValidator().validate(
+            make_document(extra_styles=(make_style("Alt"),)),
+            declarations,
+        )
+
+        assert tuple(violation.code for violation in report.errors) == (
+            "cross.style_exists",
+        )
+        assert report.errors[0].context == (
+            "style='Preset Romaji', scope='syl'"
+        )
+
+    def test_reports_missing_preset_for_style(self, tmp_path: Path) -> None:
+        write_preset(
+            tmp_path / "pop.ass",
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Preset Romaji,,"
+                    "0,0,0,template syl,pop"
+                )
+            ],
+        )
+        declarations = make_parser(tmp_path).parse(
+            [
+                make_event(
+                    effect="preset",
+                    text='"pop.ass" for "Missing"',
+                    comment=True,
+                )
+            ]
+        )
+
+        report = CrossValidator().validate(make_document(), declarations)
+
+        assert tuple(violation.code for violation in report.errors) == (
+            "cross.style_exists",
+        )
+        assert report.errors[0].context == "style='Missing', scope='syl'"
+
+    def test_reports_missing_preset_map_target_style(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        write_preset(
+            tmp_path / "pop.ass",
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Preset Romaji,,"
+                    "0,0,0,template syl,pop"
+                )
+            ],
+        )
+        declarations = make_parser(tmp_path).parse(
+            [
+                make_event(
+                    effect="preset",
+                    text='"pop.ass" map "Preset Romaji" to "Missing"',
+                    comment=True,
+                )
+            ]
+        )
+
+        report = CrossValidator().validate(make_document(), declarations)
+
+        assert tuple(violation.code for violation in report.errors) == (
+            "cross.style_exists",
+        )
+        assert report.errors[0].context == "style='Missing', scope='syl'"
 
     def test_reports_syl_variable_used_in_line_scope(self) -> None:
         declarations = ParsedDeclarations(
@@ -666,7 +842,10 @@ class TestCrossValidator:
             mixin_syl=[make_mixin_declaration()],
         )
 
-        report = CrossValidator().validate(make_document(), declarations)
+        report = CrossValidator().validate(
+            make_document(extra_styles=(make_style("Alt"),)),
+            declarations,
+        )
 
         assert tuple(violation.code for violation in report.violations) == (
             "cross.mixin_template_compatible",

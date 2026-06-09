@@ -12,6 +12,7 @@ from pykara.specification import (
     FUNCTION_SPECIFICATIONS,
     MIXIN_DECLARATION,
     MODIFIER_SPECIFICATIONS,
+    PRESET_DECLARATION,
     SCOPE_SPECIFICATIONS,
     TEMPLATE_DECLARATION,
     VARIABLE_SPECIFICATIONS,
@@ -257,6 +258,7 @@ class TestDeclarations:
             "template": TEMPLATE_DECLARATION,
             "mixin": MIXIN_DECLARATION,
             "code": CODE_DECLARATION,
+            "preset": PRESET_DECLARATION,
         }
 
     def test_template_scopes_match_contract(self) -> None:

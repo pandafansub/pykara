@@ -99,6 +99,10 @@ class ModifierParseError(DeclarativeParseError):
         )
 
 
+class PresetParseError(DeclarativeParseError):
+    """Raised when a preset declaration cannot be parsed."""
+
+
 class ValidationError(PykaraError):
     """Raised when the ValidationReport contains ERROR-level violations."""
 
@@ -169,6 +173,10 @@ class TemplateRuntimeError(EngineError):
 
 class IncludeError(EngineError):
     """Base for errors raised while resolving code includes."""
+
+
+class IncludeParseError(IncludeError):
+    """Raised when a code include declaration cannot be parsed."""
 
 
 class InvalidIncludeError(IncludeError):

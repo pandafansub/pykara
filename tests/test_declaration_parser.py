@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from pykara.data import Event
@@ -43,12 +45,32 @@ def make_event(
     )
 
 
+ASS_STYLE_FORMAT = (
+    "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, "
+    "OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, "
+    "ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, "
+    "MarginL, MarginR, MarginV, Encoding"
+)
+ASS_EVENT_FORMAT = (
+    "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, "
+    "Effect, Text"
+)
+
+
+def style_line(name: str) -> str:
+    return (
+        f"Style: {name},Arial,40,&H00FFFFFF,&H0000FFFF,&H00000000,"
+        "&H64000000,0,0,0,0,100,100,0,0,1,2,1,2,10,10,20,1"
+    )
+
+
 class TestDeclarationParser:
-    def build_parser(self) -> DeclarationParser:
+    def build_parser(self, base_dir: Path | None = None) -> DeclarationParser:
         return DeclarationParser(
             template_mod_registry=TEMPLATE_MODIFIER_REGISTRY,
             mixin_mod_registry=MIXIN_MODIFIER_REGISTRY,
             code_mod_registry=CODE_MODIFIER_REGISTRY,
+            base_dir=base_dir,
         )
 
     def test_parse_returns_grouped_declarations(self) -> None:
@@ -296,3 +318,343 @@ class TestDeclarationParser:
 
         assert error_info.value.effect_field == "code char"
         assert "not allowed" in str(error_info.value)
+
+
+def write_preset(path: Path, lines: list[str]) -> None:
+    path.write_text(
+        "\n".join(
+            [
+                "[Script Info]",
+                "ScriptType: v4.00+",
+                "",
+                "[V4+ Styles]",
+                ASS_STYLE_FORMAT,
+                style_line("Default"),
+                style_line("Preset Romaji"),
+                style_line("Preset Kanji"),
+                "",
+                "[Events]",
+                ASS_EVENT_FORMAT,
+                *lines,
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+class TestPresetDeclarationParser:
+    def build_parser(self, base_dir: Path) -> DeclarationParser:
+        return DeclarationParser(
+            template_mod_registry=TEMPLATE_MODIFIER_REGISTRY,
+            mixin_mod_registry=MIXIN_MODIFIER_REGISTRY,
+            code_mod_registry=CODE_MODIFIER_REGISTRY,
+            base_dir=base_dir,
+        )
+
+    def test_preset_preserves_declared_styles(self, tmp_path: Path) -> None:
+        preset = tmp_path / "pop.ass"
+        write_preset(
+            preset,
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Preset Romaji,,"
+                    "0,0,0,template syl,pop"
+                )
+            ],
+        )
+        parser = self.build_parser(tmp_path)
+
+        parsed = parser.parse(
+            [make_event(effect="preset", text='"pop.ass"', style="Default")]
+        )
+
+        declaration = parsed.syl[0]
+        assert isinstance(declaration, TemplateDeclaration)
+        assert declaration.style == "Preset Romaji"
+        assert declaration.body.text == "pop"
+
+    def test_preset_for_one_style_retargets_everything(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        preset = tmp_path / "pop.ass"
+        write_preset(
+            preset,
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Preset Romaji,,"
+                    "0,0,0,template syl,romaji"
+                ),
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Preset Kanji,,"
+                    "0,0,0,mixin syl,kanji mixin"
+                ),
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Default,,"
+                    "0,0,0,code syl,value = 1"
+                ),
+            ],
+        )
+        parser = self.build_parser(tmp_path)
+
+        parsed = parser.parse(
+            [
+                make_event(
+                    effect="preset",
+                    text='"pop.ass" for "Romaji"',
+                    style="Default",
+                )
+            ]
+        )
+
+        assert [declaration.style for declaration in parsed.syl] == [
+            "Romaji",
+            "Romaji",
+        ]
+        assert [declaration.style for declaration in parsed.mixin_syl] == [
+            "Romaji"
+        ]
+
+    def test_preset_for_one_style_clears_styles_modifiers(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        preset = tmp_path / "pop.ass"
+        write_preset(
+            preset,
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Default,,"
+                    "0,0,0,template syl styles preset_styles,pop"
+                ),
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Default,,"
+                    "0,0,0,code syl styles preset_styles,value = 1"
+                ),
+            ],
+        )
+        parser = self.build_parser(tmp_path)
+
+        parsed = parser.parse(
+            [
+                make_event(
+                    effect="preset",
+                    text='"pop.ass" for "Romaji"',
+                    style="Default",
+                )
+            ]
+        )
+
+        template = parsed.syl[0]
+        code = parsed.syl[1]
+        assert isinstance(template, TemplateDeclaration)
+        assert isinstance(code, CodeDeclaration)
+        assert template.style == "Romaji"
+        assert template.modifiers.styles is None
+        assert code.style == "Romaji"
+        assert code.modifiers.styles is None
+
+    def test_preset_for_many_styles_fans_out_non_setup_declarations(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        preset = tmp_path / "pop.ass"
+        write_preset(
+            preset,
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Default,,"
+                    "0,0,0,code setup,accent = 1"
+                ),
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Preset Romaji,,"
+                    "0,0,0,template syl,pop"
+                ),
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Preset Romaji,,"
+                    "0,0,0,code syl,count += 1"
+                ),
+            ],
+        )
+        parser = self.build_parser(tmp_path)
+
+        parsed = parser.parse(
+            [
+                make_event(
+                    effect="preset",
+                    text='"pop.ass" for "Romaji", "Kanji"',
+                    style="Default",
+                )
+            ]
+        )
+
+        assert len(parsed.setup) == 1
+        assert [declaration.style for declaration in parsed.syl] == [
+            "Romaji",
+            "Romaji",
+            "Kanji",
+            "Kanji",
+        ]
+
+    def test_preset_map_rewrites_only_matching_styles(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        preset = tmp_path / "pop.ass"
+        write_preset(
+            preset,
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Preset Romaji,,"
+                    "0,0,0,template syl,romaji"
+                ),
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Preset Kanji,,"
+                    "0,0,0,template syl,kanji"
+                ),
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Default,,"
+                    "0,0,0,template syl,default"
+                ),
+            ],
+        )
+        parser = self.build_parser(tmp_path)
+
+        parsed = parser.parse(
+            [
+                make_event(
+                    effect="preset",
+                    text=(
+                        '"pop.ass" map "Preset Romaji" to "Romaji", '
+                        '"Preset Kanji" to "Kanji"'
+                    ),
+                    style="Default",
+                )
+            ]
+        )
+
+        assert [declaration.style for declaration in parsed.syl] == [
+            "Romaji",
+            "Kanji",
+            "Default",
+        ]
+
+    def test_preset_map_rejects_missing_source_style(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        preset = tmp_path / "pop.ass"
+        write_preset(
+            preset,
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Preset Romaji,,"
+                    "0,0,0,template syl,romaji"
+                )
+            ],
+        )
+        parser = self.build_parser(tmp_path)
+
+        with pytest.raises(DeclarativeParseError) as error_info:
+            parser.parse(
+                [
+                    make_event(
+                        effect="preset",
+                        text='"pop.ass" map "Missing" to "Romaji"',
+                        style="Default",
+                    )
+                ]
+            )
+
+        assert "Preset style map source not found: 'Missing'" in str(
+            error_info.value
+        )
+
+    def test_preset_resolves_nested_paths_from_declaring_file(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        nested = tmp_path / "nested"
+        nested.mkdir()
+        write_preset(
+            nested / "inner.ass",
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Default,,"
+                    "0,0,0,template syl,inner"
+                )
+            ],
+        )
+        write_preset(
+            tmp_path / "outer.ass",
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Default,,"
+                    '0,0,0,preset,"nested/inner.ass" for "Romaji"'
+                )
+            ],
+        )
+        parser = self.build_parser(tmp_path)
+
+        parsed = parser.parse(
+            [make_event(effect="preset", text='"outer.ass"', style="Default")]
+        )
+
+        declaration = parsed.syl[0]
+        assert isinstance(declaration, TemplateDeclaration)
+        assert declaration.body.text == "inner"
+        assert declaration.style == "Romaji"
+
+    def test_preset_rejects_cycles(self, tmp_path: Path) -> None:
+        write_preset(
+            tmp_path / "a.ass",
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Default,,"
+                    '0,0,0,preset,"b.ass"'
+                )
+            ],
+        )
+        write_preset(
+            tmp_path / "b.ass",
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,Default,,"
+                    '0,0,0,preset,"a.ass"'
+                )
+            ],
+        )
+        parser = self.build_parser(tmp_path)
+
+        with pytest.raises(DeclarativeParseError) as error_info:
+            parser.parse(
+                [make_event(effect="preset", text='"a.ass"', style="Default")]
+            )
+
+        assert "Preset cycle detected" in str(error_info.value)
+
+    @pytest.mark.parametrize(
+        ("text", "message_part"),
+        [
+            ("", "expected preset path"),
+            ("pop.ass", "string literal"),
+            ('"pop.py"', "'.ass' extension"),
+            ('"pop.ass" for', "expected style name"),
+            ('"pop.ass" for Romaji', "string literals"),
+            ('"pop.ass" map "x" "y"', "expected 'to'"),
+            ('"pop.ass" map "x" to', "target style"),
+        ],
+    )
+    def test_preset_rejects_invalid_syntax(
+        self,
+        tmp_path: Path,
+        text: str,
+        message_part: str,
+    ) -> None:
+        parser = self.build_parser(tmp_path)
+
+        with pytest.raises(DeclarativeParseError) as error_info:
+            parser.parse([make_event(effect="preset", text=text)])
+
+        assert message_part in str(error_info.value)
