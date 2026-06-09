@@ -1,7 +1,7 @@
-script_name = "Pykara Bridge"
+script_name = "Pykara Templater"
 script_description = "Apply Pykara templates with the installed Python CLI"
 script_author = "Pykara"
-script_version = "0.1"
+script_version = "0.2"
 
 local DIALOG_WIDTH = 60
 local TEXTBOX_HEIGHT = 10
@@ -652,7 +652,7 @@ end
 local function remove_existing_fx_lines(subs)
     for index = #subs, 1, -1 do
         local line = subs[index]
-        if line.class == "dialogue" and (line.effect or ""):lower() == FX_EFFECT then
+        if line.class == "dialogue" and (line.effect or "") == FX_EFFECT then
             subs.delete(index)
         end
     end
@@ -720,15 +720,26 @@ local function run_bridge(subs)
     end
 
     apply_generated_lines(subs, generated_lines)
-    aegisub.set_undo_point("pykara Apply Templates")
+    aegisub.set_undo_point("pykara Apply template")
 
     if result.error_output ~= "" then
         show_text_dialog(format_output_for_dialog(result.error_output))
     end
 end
 
+local function remove_fx(subs)
+    remove_existing_fx_lines(subs)
+    aegisub.set_undo_point("pykara Remove FX")
+end
+
 aegisub.register_macro(
-    "pykara Apply Templates",
+    script_name .. "/Apply template",
     script_description,
     run_bridge
+)
+
+aegisub.register_macro(
+    script_name .. "/Remove FX",
+    "Remove dialogue lines whose Effect field is exactly `fx`.",
+    remove_fx
 )
