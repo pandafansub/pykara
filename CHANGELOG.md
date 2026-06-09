@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4 - 2026-06-09
+
+### Added
+
+- Added `preset` declarations for loading reusable Pykara declarations from
+  another ASS file, including preserved styles, `for` style expansion, and
+  `map` style remapping.
+- Added an Aegisub `Remove FX` macro for deleting generated `fx` dialogue
+  lines from the bridge menu.
+
+### Fixed
+
+- Improved validation for cross-declaration references, string arguments, and
+  mixin/template compatibility.
+
 ## 0.3 - 2026-06-08
 
 ### Added
