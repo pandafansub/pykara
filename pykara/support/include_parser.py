@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import ast
 
-
-class IncludeParseError(Exception):
-    """Raised when an include declaration cannot be parsed."""
+from pykara.errors import IncludeParseError
 
 
 def is_include_source(source: str) -> bool:

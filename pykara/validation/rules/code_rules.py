@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from pykara.declaration import Scope
+from pykara.errors import IncludeParseError
 from pykara.parsing import CodeDeclaration
 from pykara.specification import DECLARATIONS
 from pykara.support.include_parser import (
-    IncludeParseError,
     is_include_source,
     parse_include_paths,
 )

@@ -85,6 +85,14 @@ class EventStyleReference:
 
 
 @dataclass(frozen=True, slots=True)
+class DeclarationStyleReference:
+    """One declaration-style reference to validate against document styles."""
+
+    declaration: TemplateDeclaration | MixinDeclaration | CodeDeclaration
+    available_styles: frozenset[str]
+
+
+@dataclass(frozen=True, slots=True)
 class TemplateVariableReference:
     """One variable reference found inside a template body."""
 
@@ -346,25 +354,56 @@ def _call_name(node: ast.expr) -> str | None:
 
 @dataclass(frozen=True, slots=True)
 class ExistingStyleRule:
-    """Ensure referenced event styles exist in the document."""
+    """Ensure referenced styles exist in the document."""
 
     code: str = "cross.style_exists"
     severity: Severity = Severity.ERROR
 
-    def check(self, subject: EventStyleReference) -> Violation | None:
-        if subject.event.style in subject.available_styles:
+    def check(
+        self,
+        subject: EventStyleReference | DeclarationStyleReference,
+    ) -> Violation | None:
+        style_name = self._style_name(subject)
+        if style_name in subject.available_styles:
             return None
 
         return Violation(
             severity=self.severity,
             code=self.code,
-            message="Event style must exist in the document style map.",
-            context=(
+            message="Referenced style must exist in the document style map.",
+            context=self._context(subject),
+            location=self._location(subject),
+        )
+
+    def _style_name(
+        self,
+        subject: EventStyleReference | DeclarationStyleReference,
+    ) -> str:
+        if isinstance(subject, EventStyleReference):
+            return subject.event.style
+        return subject.declaration.style
+
+    def _context(
+        self,
+        subject: EventStyleReference | DeclarationStyleReference,
+    ) -> str:
+        if isinstance(subject, EventStyleReference):
+            return (
                 f"style={subject.event.style!r}, "
                 f"effect={subject.event.effect!r}"
-            ),
-            location="event.style",
+            )
+        return (
+            f"style={subject.declaration.style!r}, "
+            f"scope={subject.declaration.scope.value!r}"
         )
+
+    def _location(
+        self,
+        subject: EventStyleReference | DeclarationStyleReference,
+    ) -> str:
+        if isinstance(subject, EventStyleReference):
+            return "event.style"
+        return "declaration.style"
 
 
 @dataclass(frozen=True, slots=True)

@@ -34,7 +34,7 @@ pykara input.ass output.ass --generated-only
 
 ### Directives
 
-- [Types](./directives/types.md) — `template`, `mixin`, and `code`.
+- [Types](./directives/types.md) — `template`, `mixin`, `code`, and `preset`.
 - [Scopes](./directives/scopes.md) — Execution frequency and scope rules.
 - [Variables](./directives/variables.md) — Complete `$variable` reference.
 - [Include](./directives/include.md) — Load shared Python setup files.

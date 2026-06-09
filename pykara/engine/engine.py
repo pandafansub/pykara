@@ -26,6 +26,7 @@ from pykara.errors import (
     BoundMethodInExpressionError,
     EngineError,
     IncludeCollisionError,
+    IncludeParseError,
     IncludeReadError,
     InvalidIncludeError,
     ReservedNameError,
@@ -56,7 +57,6 @@ from pykara.processing.text_renderer import TextRenderer
 from pykara.support.ass_tags import merge_adjacent_override_blocks
 from pykara.support.code_analysis import collect_assigned_names
 from pykara.support.include_parser import (
-    IncludeParseError,
     is_include_source,
     parse_include_paths,
 )

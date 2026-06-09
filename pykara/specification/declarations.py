@@ -51,8 +51,16 @@ CODE_DECLARATION = DeclarationSpecification(
     description="Execute Python code in the execution environment.",
 )
 
+PRESET_DECLARATION = DeclarationSpecification(
+    name="preset",
+    allowed_scopes=frozenset(),
+    allowed_modifiers=frozenset(),
+    description="Load reusable Pykara declarations from another ASS file.",
+)
+
 DECLARATIONS: dict[str, DeclarationSpecification] = {
     TEMPLATE_DECLARATION.name: TEMPLATE_DECLARATION,
     MIXIN_DECLARATION.name: MIXIN_DECLARATION,
     CODE_DECLARATION.name: CODE_DECLARATION,
+    PRESET_DECLARATION.name: PRESET_DECLARATION,
 }

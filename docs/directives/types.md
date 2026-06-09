@@ -43,3 +43,29 @@ Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl,{\1c$main}
 ```ass
 Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl,{\1c!main!}
 ```
+
+## `preset`
+
+Loads `template`, `mixin`, `code`, and nested `preset` directives from another
+`.ass` file. The path is written in the event `Text` field.
+
+```ass
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,preset,"effects/pop.ass"
+```
+
+Without a style clause, style names map by identity (`Romaji` → `Romaji`).
+
+Use `for` to bind all style-sensitive declarations to one or more consumer styles:
+
+```ass
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,preset,"effects/pop.ass" for "Romaji", "Kanji"
+```
+
+Use `map` to translate preset style names to local names:
+
+```ass
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,preset,"effects/pop.ass" map "Preset Romaji" to "Romaji", "Preset Kanji" to "Kanji"
+```
+
+All referenced styles must exist in their respective documents. Relative paths
+are resolved from the file containing the preset directive.
