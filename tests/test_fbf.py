@@ -670,10 +670,50 @@ def test_expand_document_to_fbf_uses_metadata_playbackfps() -> None:
     assert len(expanded.events) == 24
 
 
+def test_expand_document_to_fbf_uses_rational_metadata_playbackfps() -> None:
+    document = make_document(
+        [make_event(r"{\frz0\t(\frz360)}x")],
+        "24000/1001",
+    )
+
+    expanded = expand_document_to_fbf(document)
+
+    assert len(expanded.events) == 24
+
+
+@pytest.mark.parametrize("playback_fps", ["inf", "24000/0"])
+def test_expand_document_to_fbf_rejects_invalid_playbackfps(
+    playback_fps: str,
+) -> None:
+    document = make_document(
+        [make_event(r"{\frz0\t(\frz360)}x")],
+        playback_fps,
+    )
+
+    with pytest.raises(
+        PykaraError,
+        match=(
+            "frame-baked expansion requires explicit timecodes or PlaybackFPS"
+        ),
+    ):
+        expand_document_to_fbf(document)
+
+
 def test_expand_document_to_fbf_uses_dummy_video_fps() -> None:
     document = make_document([make_event(r"{\frz0\t(\frz360)}x")])
     document.metadata.raw["Video File"] = "?dummy:24:40000:1280:720:0:0:0:"
     expanded = expand_document_to_fbf(document)
+    assert len(expanded.events) == 24
+
+
+def test_expand_document_to_fbf_uses_rational_dummy_video_fps() -> None:
+    document = make_document([make_event(r"{\frz0\t(\frz360)}x")])
+    document.metadata.raw["Video File"] = (
+        "?dummy:24000/1001:40000:1280:720:0:0:0:"
+    )
+
+    expanded = expand_document_to_fbf(document)
+
     assert len(expanded.events) == 24
 
 

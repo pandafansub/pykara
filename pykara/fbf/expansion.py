@@ -30,10 +30,36 @@ def _dummy_video_fps(raw_metadata: dict[str, str]) -> float | None:
     tokens = video_file.split(":")
     if len(tokens) < 3:
         return None
+    return _parse_fps(tokens[1])
+
+
+def _parse_fps(value: str) -> float | None:
+    """Parse decimal or rational FPS text."""
+    text = value.strip()
+    if not text:
+        return None
+
+    numerator_text, separator, denominator_text = text.partition("/")
+    if separator:
+        numerator = _parse_positive_float(numerator_text)
+        denominator = _parse_positive_float(denominator_text)
+        if numerator is None or denominator is None:
+            return None
+        return _validate_fps(numerator / denominator)
+
+    return _parse_positive_float(text)
+
+
+def _parse_positive_float(value: str) -> float | None:
     try:
-        return float(tokens[1])
+        parsed = float(value)
     except ValueError:
         return None
+    return _validate_fps(parsed)
+
+
+def _validate_fps(value: float) -> float | None:
+    return value if math.isfinite(value) and value > 0 else None
 
 
 def _line_with_updates(
@@ -71,10 +97,11 @@ def resolve_metadata_framerate(
         return None
     raw_fps = metadata.raw.get("PlaybackFPS")
     if raw_fps:
-        try:
-            return float(raw_fps)
-        except ValueError as error:
+        fps = _parse_fps(raw_fps)
+        if fps is None:
+            error = ValueError(f"invalid FPS: {raw_fps!r}")
             raise PykaraError(_FBF_FRAMERATE_ERROR) from error
+        return fps
 
     dummy_fps = _dummy_video_fps(metadata.raw)
     if dummy_fps is not None:
