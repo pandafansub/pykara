@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.5 - 2026-06-12
+
+### Added
+
+- Added CLI framerate inputs for frame-by-frame effects, including timecode
+  and timeline support for effect expansion.
+
+### Fixed
+
+- Added support for gradients in mixins.
+- Added support for rational FPS values in frame-by-frame expansion.
+
 ## 0.4 - 2026-06-09
 
 ### Added
