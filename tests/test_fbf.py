@@ -38,7 +38,12 @@ from pykara.fbf.ass_tags import (
     remove_move,
     replace_tag_in_block,
 )
-from pykara.fbf.timeline import ConstantFrameRate, frame_from_ms, ms_from_frame
+from pykara.fbf.timeline import (
+    ConstantFrameRate,
+    TimecodeFrameRate,
+    frame_from_ms,
+    ms_from_frame,
+)
 
 FPS = 24.0
 
@@ -692,9 +697,7 @@ def test_expand_document_to_fbf_rejects_invalid_playbackfps(
 
     with pytest.raises(
         PykaraError,
-        match=(
-            "frame-baked expansion requires explicit timecodes or PlaybackFPS"
-        ),
+        match="frame-by-frame processing requires FPS information",
     ):
         expand_document_to_fbf(document)
 
@@ -724,6 +727,15 @@ def test_expand_document_to_fbf_prefers_explicit_framerate() -> None:
     assert len(expanded.events) == 24
 
 
+def test_expand_document_to_fbf_uses_explicit_timecodes() -> None:
+    document = make_document([make_event(r"{\frz0\t(\frz360)}x")], "6")
+    timecodes = TimecodeFrameRate(tuple(range(0, 1040, 40)))
+
+    expanded = expand_document_to_fbf(document, timecodes)
+
+    assert len(expanded.events) == 25
+
+
 def test_expand_document_to_fbf_preserves_comments_by_default() -> None:
     document = make_document(
         [
@@ -749,9 +761,7 @@ def test_expand_document_to_fbf_requires_fps() -> None:
     document = make_document([make_event(r"{\frz0\t(\frz360)}x")])
     with pytest.raises(
         PykaraError,
-        match=(
-            "frame-baked expansion requires explicit timecodes or PlaybackFPS"
-        ),
+        match="frame-by-frame processing requires FPS information",
     ):
         expand_document_to_fbf(document)
 

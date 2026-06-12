@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pykara.data import Event, Style
 from pykara.engine import GeneratedLine
 from pykara.engine.engine import Engine
+from pykara.fbf.timeline import FrameRateSource
 from pykara.processing import LinePreprocessor, TextMeasurement
 
 
@@ -74,7 +75,9 @@ def make_generated_line() -> GeneratedLine:
     return GeneratedLine.from_event(make_event(), make_style())
 
 
-def build_engine() -> Engine:
+def build_engine(
+    fbf_framerate: FrameRateSource | None = None,
+) -> Engine:
     extents = FakeExtentsProvider(
         {
             "goal": 40.0,
@@ -87,4 +90,8 @@ def build_engine() -> Engine:
             "l": 10.0,
         }
     )
-    return Engine(LinePreprocessor(extents), seed=1)
+    return Engine(
+        LinePreprocessor(extents),
+        seed=1,
+        fbf_framerate=fbf_framerate,
+    )

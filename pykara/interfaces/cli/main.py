@@ -12,6 +12,7 @@ from pykara.errors import (
 )
 from pykara.interfaces.cli.args import build_parser
 from pykara.interfaces.cli.pipeline import (
+    load_cli_framerate,
     load_declarations,
     load_document,
     run_engine,
@@ -82,6 +83,7 @@ def main() -> int:
         return preflight_result
 
     try:
+        fbf_framerate = load_cli_framerate(args.fps, args.timecodes)
         document = load_document(args.input)
         declarations = load_declarations(document, base_dir=args.input.parent)
         report = run_validation(document, declarations)
@@ -125,6 +127,7 @@ def main() -> int:
             declarations,
             seed=args.seed,
             font_dirs=tuple(path.resolve() for path in args.font_dir),
+            fbf_framerate=fbf_framerate,
         )
         write_output(
             document,

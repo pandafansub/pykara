@@ -10,7 +10,11 @@ from typing import ClassVar, Protocol, cast
 from pykara.data import Metadata
 from pykara.engine.functions._base import BoundNamespaceFunction
 from pykara.errors import EngineError
-from pykara.fbf.expansion import resolve_metadata_framerate
+from pykara.fbf.expansion import (
+    FBF_FRAMERATE_REQUIRED_MESSAGE,
+    resolve_metadata_framerate,
+)
+from pykara.fbf.timeline import FrameRateSource
 from pykara.motion import (
     SHAD_AUTO_MARKER,
     ArcFbfRequest,
@@ -57,6 +61,7 @@ class _TimedElement(Protocol):
 
 class _MotionEnvironment(Protocol):
     metadata: Metadata | None
+    fbf_framerate: FrameRateSource | None
     line: _GeneratedLine | None
     vars: object
     word: _TimedElement | None
@@ -84,8 +89,14 @@ def _require_output_line(env: _MotionEnvironment, label: str) -> _GeneratedLine:
 
 def _require_fbf_runtime(env: _MotionEnvironment, label: str) -> _GeneratedLine:
     line = _require_output_line(env, label)
-    if resolve_metadata_framerate(env.metadata) is None:
-        raise EngineError(f"{label} requires explicit timecodes or PlaybackFPS")
+    if (
+        env.fbf_framerate is None
+        and resolve_metadata_framerate(env.metadata) is None
+    ):
+        raise EngineError(
+            f"{label} requires FPS information. "
+            f"{FBF_FRAMERATE_REQUIRED_MESSAGE}"
+        )
     return line
 
 

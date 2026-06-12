@@ -1556,6 +1556,8 @@
     "cli_flags": {
       "--seed": ["case:valid_modifiers_mixins_scopes", "case:valid_cli_seed_reseed"],
       "--json": ["case:valid_function_matrix_json"],
+      "--fps": ["tests/test_cli.py"],
+      "--timecodes": ["tests/test_cli.py"],
       "--warn-only": ["case:warn_only_invalid_event_time"],
       "--font-dir": ["case:valid_function_matrix_font_dir"],
       "--generated-only": ["case:valid_function_matrix_generated_only"]

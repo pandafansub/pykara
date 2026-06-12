@@ -166,6 +166,8 @@ def test_cli_acceptance_inventory_covers_public_spec() -> None:
     expected_cli_flags = {
         "--seed",
         "--json",
+        "--fps",
+        "--timecodes",
         "--warn-only",
         "--font-dir",
         "--generated-only",
