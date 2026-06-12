@@ -8,7 +8,11 @@ from typing import ClassVar, Protocol, cast
 from pykara.data import Metadata
 from pykara.engine.functions._base import BoundNamespaceFunction
 from pykara.errors import EngineError
-from pykara.fbf.expansion import resolve_metadata_framerate
+from pykara.fbf.expansion import (
+    FBF_FRAMERATE_REQUIRED_MESSAGE,
+    resolve_metadata_framerate,
+)
+from pykara.fbf.timeline import FrameRateSource
 from pykara.motion import (
     GRADIENT_PLACEHOLDER,
     GradientBox,
@@ -78,6 +82,7 @@ class _VarsLike(Protocol):
 
 class _GradientEnvironment(Protocol):
     metadata: Metadata | None
+    fbf_framerate: FrameRateSource | None
     line: _GeneratedLine | None
     vars: _VarsLike
     word: object | None
@@ -235,9 +240,13 @@ class _GradientNamespace:
                 f"{unknown_names}"
             )
         line = _require_line(self._env)
-        if resolve_metadata_framerate(self._env.metadata) is None:
+        if (
+            self._env.fbf_framerate is None
+            and resolve_metadata_framerate(self._env.metadata) is None
+        ):
             raise EngineError(
-                "gradient.make() requires explicit timecodes or PlaybackFPS"
+                "gradient.make() requires FPS information. "
+                f"{FBF_FRAMERATE_REQUIRED_MESSAGE}"
             )
         if r"\move" in line.text:
             raise EngineError("gradient.make() cannot be combined with \\move")

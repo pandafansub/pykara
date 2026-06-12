@@ -13,6 +13,8 @@ from pykara.declaration.code import CODE_MODIFIER_REGISTRY
 from pykara.declaration.mixin import MIXIN_MODIFIER_REGISTRY
 from pykara.declaration.template import TEMPLATE_MODIFIER_REGISTRY
 from pykara.engine import Engine
+from pykara.fbf.timecodes import read_timecodes
+from pykara.fbf.timeline import FrameRateSource
 from pykara.parsing import DeclarationParser, ParsedDeclarations
 from pykara.processing import FontMetricsProvider, LinePreprocessor
 from pykara.validation.reports import ValidationReport
@@ -89,6 +91,7 @@ def run_engine(
     declarations: ParsedDeclarations,
     seed: int | None = None,
     font_dirs: tuple[Path, ...] = (),
+    fbf_framerate: FrameRateSource | None = None,
 ) -> list[Event]:
     """Generate fx events through the core engine.
 
@@ -97,6 +100,7 @@ def run_engine(
         declarations: Parsed declarations for that document.
         seed: Optional deterministic random seed.
         font_dirs: Optional directories containing fonts.
+        fbf_framerate: Optional explicit frame/time source for FBF effects.
 
     Returns:
         Generated ``fx`` events.
@@ -105,12 +109,25 @@ def run_engine(
     preprocessor = LinePreprocessor(
         extents=FontMetricsProvider(font_dirs=font_dirs),
     )
-    return Engine(preprocessor, seed=seed).apply(
+    return Engine(preprocessor, seed=seed, fbf_framerate=fbf_framerate).apply(
         document.events,
         declarations,
         document.metadata,
         document.styles,
     )
+
+
+def load_cli_framerate(
+    fps: float | None,
+    timecodes_path: Path | None,
+) -> FrameRateSource | None:
+    """Load the CLI-provided frame/time source, if any."""
+
+    if fps is not None:
+        return fps
+    if timecodes_path is not None:
+        return read_timecodes(timecodes_path)
+    return None
 
 
 def write_output(

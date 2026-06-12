@@ -88,6 +88,7 @@ class DummyEnv:
             raw={"PlaybackFPS": "24"},
         )
     )
+    fbf_framerate: FrameRateSource | None = None
     line: GeneratedLine | None = None
     vars: DummyVars = field(default_factory=DummyVars)
     word: object | None = None
@@ -127,10 +128,7 @@ class TestGradientNamespace:
 
         with pytest.raises(
             EngineError,
-            match=(
-                r"gradient\.make\(\) requires explicit timecodes "
-                r"or PlaybackFPS"
-            ),
+            match=r"gradient\.make\(\) requires FPS information",
         ):
             gradient.make(["&H0000FF&", "&HFF0000&"])
 

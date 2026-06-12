@@ -40,7 +40,9 @@ Comment: 0,0:00:00.00,0:00:05.00,Default,,0,0,0,karaoke,Goal
 
 ## Restrictions
 
-- Requires `PlaybackFPS` or dummy-video FPS metadata.
+- Requires FPS information. In the CLI, pass either `--fps FPS` or
+  `--timecodes timecodes.txt`; otherwise Pykara falls back to `PlaybackFPS`,
+  then Aegisub dummy-video FPS metadata.
 - Available inside `template` and `mixin` declarations. In a mixin, the gradient
   expands only the generated line where that mixin is applied.
 - Cannot be combined with `\move`.

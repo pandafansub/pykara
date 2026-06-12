@@ -41,7 +41,10 @@ Comment: 0,0:00:00.00,0:00:05.00,Default,,0,0,0,karaoke,Goal
 ## motion.fbf
 
 `motion.fbf` expands the rendered line into one event per frame and requires
-`PlaybackFPS` or dummy-video FPS metadata. It cannot be combined with `\pos` or
+FPS information. In the CLI, pass either `--fps FPS` (for example `24` or
+`24000/1001`) or `--timecodes timecodes.txt`. Without either flag, Pykara reads
+`PlaybackFPS` from `[Script Info]`, then dummy-video FPS metadata from
+`[Aegisub Project Garbage]`. It cannot be combined with `\pos` or
 `\move`. One `gradient.make(...)` may be added alongside; Pykara bakes the
 motion first and applies the gradient per frame.
 

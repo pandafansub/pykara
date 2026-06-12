@@ -34,7 +34,11 @@ from pykara.errors import (
     TemplateRuntimeError,
     UnknownStyleReferenceError,
 )
-from pykara.fbf.expansion import resolve_metadata_framerate
+from pykara.fbf.expansion import (
+    FBF_FRAMERATE_REQUIRED_MESSAGE,
+    resolve_metadata_framerate,
+)
+from pykara.fbf.timeline import FrameRateSource
 from pykara.motion import (
     GradientRequest,
     MotionAnchor,
@@ -243,9 +247,11 @@ class Engine:
         self,
         preprocessor: LinePreprocessor,
         seed: int | None = None,
+        fbf_framerate: FrameRateSource | None = None,
     ) -> None:
         self._preprocessor = preprocessor
         self._initial_rng_value = seed
+        self._fbf_framerate = fbf_framerate
         self._karaoke_parser = KaraokeParser()
         self._renderer = TextRenderer()
         self._code_runner = _CodeRunner()
@@ -273,6 +279,7 @@ class Engine:
             styles=styles,
             declaration="code",
             metadata=meta,
+            fbf_framerate=self._fbf_framerate,
             rng=random.Random(self._initial_rng_value),  # noqa: S311
         )
         for declaration in declarations.setup:
@@ -994,12 +1001,11 @@ class Engine:
         if not expansion_requests:
             return [event]
 
-        framerate = resolve_metadata_framerate(env.metadata)
+        framerate = env.fbf_framerate
         if framerate is None:
-            raise EngineError(
-                "frame-baked expansion requires explicit timecodes "
-                "or PlaybackFPS"
-            )
+            framerate = resolve_metadata_framerate(env.metadata)
+        if framerate is None:
+            raise EngineError(FBF_FRAMERATE_REQUIRED_MESSAGE)
         expanded_events = [event]
         for queued_expansion in expansion_requests:
             next_events: list[Event] = []

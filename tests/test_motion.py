@@ -139,6 +139,7 @@ class DummyEnv:
             raw={"PlaybackFPS": "24"},
         )
     )
+    fbf_framerate: FrameRateSource | None = None
     line: GeneratedLine | None = None
     vars: DummyVars = field(default_factory=DummyVars)
     word: DummyTimedElement | None = None
@@ -369,10 +370,7 @@ class TestMotionNamespace:
 
         with pytest.raises(
             EngineError,
-            match=(
-                r"motion\.fbf\.arc\(\) requires explicit timecodes "
-                r"or PlaybackFPS"
-            ),
+            match=r"motion\.fbf\.arc\(\) requires FPS information",
         ):
             motion.fbf.arc(100, 400, 800, 400)
 
@@ -602,10 +600,7 @@ class TestMotionEngineIntegration:
 
         with pytest.raises(
             EngineError,
-            match=(
-                r"motion\.fbf\.arc\(\) requires explicit timecodes "
-                r"or PlaybackFPS"
-            ),
+            match=r"motion\.fbf\.arc\(\) requires FPS information",
         ):
             engine.apply(
                 [make_event()],
@@ -613,6 +608,23 @@ class TestMotionEngineIntegration:
                 Metadata(res_x=1280, res_y=720),
                 {"Default": make_style()},
             )
+
+    def test_explicit_framerate_skips_invalid_metadata_resolution(self) -> None:
+        engine = build_engine(fbf_framerate=24.0)
+        template = TemplateDeclaration(
+            body=TemplateBody(r"{!motion.fbf.arc(100,400,800,400)!}"),
+            scope=Scope.LINE,
+            modifiers=TemplateModifiers(),
+        )
+
+        result = engine.apply(
+            [make_event()],
+            ParsedDeclarations(line=[template]),
+            Metadata(res_x=1280, res_y=720, raw={"PlaybackFPS": "inf"}),
+            {"Default": make_style()},
+        )
+
+        assert result
 
     def test_fbf_motion_output_replaces_timing_with_static_pos(self) -> None:
         engine = build_engine()

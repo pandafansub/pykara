@@ -17,9 +17,13 @@ from pykara.fbf.ass_tags import (
 )
 from pykara.fbf.timeline import FrameRateSource, coerce_framerate
 
-_FBF_FRAMERATE_ERROR = (
-    "frame-baked expansion requires explicit timecodes or PlaybackFPS"
+FBF_FRAMERATE_REQUIRED_MESSAGE = (
+    "frame-by-frame processing requires FPS information. Pass --fps FPS, "
+    "--timecodes PATH, or add PlaybackFPS or Aegisub dummy-video metadata "
+    "to the ASS file."
 )
+_DUMMY_VIDEO_MIN_TOKENS = 3
+_FBF_STEP_ERROR = "frame-baked expansion step must be >= 1"
 
 
 def _dummy_video_fps(raw_metadata: dict[str, str]) -> float | None:
@@ -28,12 +32,12 @@ def _dummy_video_fps(raw_metadata: dict[str, str]) -> float | None:
     if video_file is None or not video_file.startswith("?dummy:"):
         return None
     tokens = video_file.split(":")
-    if len(tokens) < 3:
+    if len(tokens) < _DUMMY_VIDEO_MIN_TOKENS:
         return None
-    return _parse_fps(tokens[1])
+    return parse_fps(tokens[1])
 
 
-def _parse_fps(value: str) -> float | None:
+def parse_fps(value: str) -> float | None:
     """Parse decimal or rational FPS text."""
     text = value.strip()
     if not text:
@@ -97,10 +101,10 @@ def resolve_metadata_framerate(
         return None
     raw_fps = metadata.raw.get("PlaybackFPS")
     if raw_fps:
-        fps = _parse_fps(raw_fps)
+        fps = parse_fps(raw_fps)
         if fps is None:
             error = ValueError(f"invalid FPS: {raw_fps!r}")
-            raise PykaraError(_FBF_FRAMERATE_ERROR) from error
+            raise PykaraError(FBF_FRAMERATE_REQUIRED_MESSAGE) from error
         return fps
 
     dummy_fps = _dummy_video_fps(metadata.raw)
@@ -120,11 +124,12 @@ def _resolve_document_framerate(
     if resolved is not None:
         return resolved
 
-    raise PykaraError(_FBF_FRAMERATE_ERROR)
+    raise PykaraError(FBF_FRAMERATE_REQUIRED_MESSAGE)
 
 
 def _line_frame_range(
-    event: Event, framerate: FrameRateSource
+    event: Event,
+    framerate: FrameRateSource,
 ) -> tuple[int, int] | None:
     start_time = event.start_time
     end_time = event.end_time
@@ -145,7 +150,7 @@ def line_to_fbf(
 ) -> list[Event]:
     """Convert one subtitle event into frame-by-frame static events."""
     if step < 1:
-        raise PykaraError("frame-baked expansion step must be >= 1")
+        raise PykaraError(_FBF_STEP_ERROR)
 
     mapping = coerce_framerate(framerate)
     start_time = event.start_time
@@ -219,7 +224,7 @@ def line_to_fbf(
                 start_time=step_start,
                 end_time=step_end,
                 text="".join(rebuilt),
-            )
+            ),
         )
 
     return result_lines or [event]

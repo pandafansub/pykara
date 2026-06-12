@@ -7,11 +7,14 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
+import pytest
 from _pytest.capture import CaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
 
 from pykara.adapters.input.sub_station_alpha import SubStationAlphaReader
 from pykara.errors import PykaraError, ValidationError
+from pykara.fbf.timeline import FrameRateSource, TimecodeFrameRate
+from pykara.interfaces.cli.args import build_parser
 from pykara.interfaces.cli.main import main
 from pykara.interfaces.cli.pipeline import write_output
 from pykara.validation.reports import Severity, ValidationReport, Violation
@@ -266,6 +269,100 @@ class TestCli:
         assert result == 0
         assert document.events
         assert all(event.effect.lower() == "fx" for event in document.events)
+
+    def test_fps_flag_is_passed_to_engine(
+        self,
+        tmp_path: Path,
+        monkeypatch: MonkeyPatch,
+    ) -> None:
+        input_path = tmp_path / "input.ass"
+        output_path = tmp_path / "output.ass"
+        write_ass(input_path)
+        captured: dict[str, FrameRateSource | None] = {}
+
+        def fake_run_engine(
+            *_args: object,
+            fbf_framerate: FrameRateSource | None = None,
+            **_kwargs: object,
+        ) -> list[Any]:
+            captured["fbf_framerate"] = fbf_framerate
+            return []
+
+        monkeypatch.setattr(cli_main, "run_engine", fake_run_engine)
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "pykara",
+                str(input_path),
+                str(output_path),
+                "--fps",
+                "24000/1001",
+            ],
+        )
+
+        result = main()
+        framerate = captured["fbf_framerate"]
+
+        assert result == 0
+        assert isinstance(framerate, float)
+        assert abs(framerate - (24000 / 1001)) < 0.00001
+
+    def test_timecodes_flag_is_passed_to_engine(
+        self,
+        tmp_path: Path,
+        monkeypatch: MonkeyPatch,
+    ) -> None:
+        input_path = tmp_path / "input.ass"
+        output_path = tmp_path / "output.ass"
+        timecodes_path = tmp_path / "timecodes.txt"
+        write_ass(input_path)
+        timecodes_path.write_text(
+            "# timecode format v2\n0\n40\n80\n120\n",
+            encoding="utf-8",
+        )
+        captured: dict[str, FrameRateSource | None] = {}
+
+        def fake_run_engine(
+            *_args: object,
+            fbf_framerate: FrameRateSource | None = None,
+            **_kwargs: object,
+        ) -> list[Any]:
+            captured["fbf_framerate"] = fbf_framerate
+            return []
+
+        monkeypatch.setattr(cli_main, "run_engine", fake_run_engine)
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "pykara",
+                str(input_path),
+                str(output_path),
+                "--timecodes",
+                str(timecodes_path),
+            ],
+        )
+
+        result = main()
+        framerate = captured["fbf_framerate"]
+
+        assert result == 0
+        assert isinstance(framerate, TimecodeFrameRate)
+        assert framerate.frame_at_time(41) == 1
+
+    def test_fps_and_timecodes_flags_are_mutually_exclusive(self) -> None:
+        parser = build_parser()
+
+        with pytest.raises(SystemExit):
+            parser.parse_args(
+                [
+                    "input.ass",
+                    "output.ass",
+                    "--fps",
+                    "24",
+                    "--timecodes",
+                    "timecodes.txt",
+                ]
+            )
 
     def test_write_output_generated_only_skips_source_events(
         self,

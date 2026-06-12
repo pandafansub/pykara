@@ -19,6 +19,7 @@ from pykara.engine.assets import assets
 from pykara.engine.functions import FUNCTION_REGISTRY
 from pykara.engine.safe_builtins import SAFE_BUILTINS
 from pykara.errors import ExecutionAttributeUnavailableError
+from pykara.fbf.timeline import FrameRateSource
 from pykara.motion.common import QueuedEventExpansion
 from pykara.specification import (
     EXPOSED_MODULES,
@@ -1196,6 +1197,7 @@ class Environment:
     declaration: str
     vars: VarContext = field(default_factory=VarContext)
     metadata: Metadata | None = None
+    fbf_framerate: FrameRateSource | None = None
     source_line: Event | None = None
     karaoke: Karaoke | None = None
     line: GeneratedLine | None = None
