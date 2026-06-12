@@ -83,13 +83,6 @@ class _GradientEnvironment(Protocol):
     word: object | None
     syl: object | None
     char: object | None
-    rendering_mixin: bool
-
-
-class _UnavailableGradientNamespace:
-    def __getattr__(self, name: str) -> object:
-        del name
-        raise EngineError("gradient.* can only be used in template bodies")
 
 
 def _require_line(env: _GradientEnvironment) -> _GeneratedLine:
@@ -275,6 +268,4 @@ class GradientFunction(BoundNamespaceFunction):
 
     def build_bound(self, env: object) -> object:
         gradient_env = cast(_GradientEnvironment, env)
-        if getattr(gradient_env, "rendering_mixin", False):
-            return _UnavailableGradientNamespace()
         return _GradientNamespace(gradient_env)

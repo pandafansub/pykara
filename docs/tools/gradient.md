@@ -23,10 +23,10 @@ Build a gradient over the bounding box of the rendered line or syllable.
 `direction` is one of `"top-bottom"`, `"bottom-top"`, `"left-right"`, or
 `"right-left"`.
 
-Multiple `gradient.make(...)` calls can be used in one template, for example to
-apply separate gradients to `\1c`, `\2c`, and `\3c`. When calls use different
-`step` values, the smallest `step` has priority and determines the shared slice
-segmentation.
+Multiple `gradient.make(...)` calls can be used in one template or mixin, for
+example to apply separate gradients to `\1c`, `\2c`, and `\3c`. When calls use
+different `step` values, the smallest `step` has priority and determines the
+shared slice segmentation.
 
 ```ass
 [Script Info]
@@ -41,7 +41,8 @@ Comment: 0,0:00:00.00,0:00:05.00,Default,,0,0,0,karaoke,Goal
 ## Restrictions
 
 - Requires `PlaybackFPS` or dummy-video FPS metadata.
-- Available only inside `template` declarations, not mixins.
+- Available inside `template` and `mixin` declarations. In a mixin, the gradient
+  expands only the generated line where that mixin is applied.
 - Cannot be combined with `\move`.
 - Cannot be combined with `\clip` or `\iclip`.
 - Does not support rotation or shear tags: `\frz`, `\frx`, `\fry`, `\fax`,

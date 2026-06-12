@@ -11,7 +11,11 @@ import pytest
 from pykara.data import Event, Metadata
 from pykara.declaration import Scope
 from pykara.declaration.mixin import MixinBody, MixinModifiers
-from pykara.declaration.template import TemplateBody, TemplateModifiers
+from pykara.declaration.template import (
+    LoopDescriptor,
+    TemplateBody,
+    TemplateModifiers,
+)
 from pykara.engine import GeneratedLine
 from pykara.engine.functions import FUNCTION_REGISTRY
 from pykara.errors import EngineError
@@ -450,7 +454,7 @@ class TestGradientEngineIntegration:
         assert all(r"\t(" not in event.text for event in result)
         assert len({event.text for event in result}) > 1
 
-    def test_gradient_cannot_be_used_in_mixin(self) -> None:
+    def test_gradient_can_be_used_in_mixin(self) -> None:
         engine = build_engine()
         template = TemplateDeclaration(
             body=TemplateBody(r"{\an5}"),
@@ -463,17 +467,56 @@ class TestGradientEngineIntegration:
             modifiers=MixinModifiers(),
         )
 
-        with pytest.raises(
-            EngineError,
-            match=r"gradient\.\* can only be used in template bodies",
-        ):
-            engine.apply(
-                [make_event()],
-                ParsedDeclarations(line=[template], mixin_line=[mixin]),
-                Metadata(
-                    res_x=1280,
-                    res_y=720,
-                    raw={"PlaybackFPS": "24"},
-                ),
-                {"Default": make_style()},
-            )
+        result = engine.apply(
+            [make_event()],
+            ParsedDeclarations(line=[template], mixin_line=[mixin]),
+            Metadata(
+                res_x=1280,
+                res_y=720,
+                raw={"PlaybackFPS": "24"},
+            ),
+            {"Default": make_style()},
+        )
+
+        assert len(result) >= 2
+        assert all(r"\clip(" in event.text for event in result)
+        assert all(GRADIENT_PLACEHOLDER not in event.text for event in result)
+
+    def test_mixin_gradient_only_expands_matching_template_loop_layer(
+        self,
+    ) -> None:
+        engine = build_engine()
+        template = TemplateDeclaration(
+            body=TemplateBody(r"!layer.set($loop_i + 1)!{\an5}"),
+            scope=Scope.SYL,
+            modifiers=TemplateModifiers(
+                loops=(LoopDescriptor(name="i", iterations=2),)
+            ),
+        )
+        mixin = MixinDeclaration(
+            body=MixinBody(
+                r"{\1c!gradient.make(['&H0000FF&','&HFF0000&'], step=8)!}"
+            ),
+            scope=Scope.SYL,
+            modifiers=MixinModifiers(layer=2),
+        )
+
+        result = engine.apply(
+            [make_event()],
+            ParsedDeclarations(syl=[template], mixin_syl=[mixin]),
+            Metadata(
+                res_x=1280,
+                res_y=720,
+                raw={"PlaybackFPS": "24"},
+            ),
+            {"Default": make_style()},
+        )
+
+        layer_1 = [event for event in result if event.layer == 1]
+        layer_2 = [event for event in result if event.layer == 2]
+
+        assert len(layer_1) == 2
+        assert len(layer_2) > len(layer_1)
+        assert all(r"\clip(" not in event.text for event in layer_1)
+        assert all(r"\clip(" in event.text for event in layer_2)
+        assert all(GRADIENT_PLACEHOLDER not in event.text for event in result)
