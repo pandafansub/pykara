@@ -22,6 +22,7 @@ from pykara.engine.functions import (
     CircularSpreadFunction,
     FunctionRegistry,
     GetFunction,
+    GetStyleFunction,
     HslToRgbFunction,
     HsvToRgbFunction,
     InterpolateColorFunction,
@@ -35,13 +36,18 @@ from pykara.engine.functions import (
     ShapeDisplaceFunction,
     ShapeRotateFunction,
     ShapeSplitClipFunction,
+    StyleInfo,
 )
 from pykara.engine.functions.retime import (
     _implicit_collection,
     _RetimeEnvironment,
     _validate_target_scope,
 )
-from pykara.errors import EngineError, LockedStoreKeyError
+from pykara.errors import (
+    EngineError,
+    LockedStoreKeyError,
+    UnknownStyleLookupError,
+)
 
 
 @dataclass(slots=True)
@@ -812,6 +818,33 @@ class TestFunctionRegistry:
         assert namespace["coord"].polar(0, 30, "x") == 30
 
 
+class TestGetStyleFunction:
+    def test_returns_style_information(self) -> None:
+        env = DummyEnvironment(styles={"My Style": make_style("My Style")})
+        function = GetStyleFunction()
+
+        result = function(env, "My Style")
+
+        assert isinstance(result, StyleInfo)
+        assert result.name == "My Style"
+        assert result.fontname == "Arial"
+        assert result.fontsize == 36.0
+        assert result.primary_colour == "&H00FFFFFF"
+        assert result.primary_color == "&H00FFFFFF"
+        assert result.secondary_color == "&H000000FF"
+        assert result.outline_color == "&H00000000"
+        assert result.shadow_color == "&H00000000"
+        assert result.outline == 2.0
+        assert result.margin_v == 10
+
+    def test_raises_for_unknown_style(self) -> None:
+        env = DummyEnvironment(styles={"Default": make_style()})
+        function = GetStyleFunction()
+
+        with pytest.raises(UnknownStyleLookupError, match="Missing"):
+            function(env, "Missing")
+
+
 class TestDefaultRegistry:
     def test_default_registry_exposes_core_functions(self) -> None:
         env = DummyEnvironment()
@@ -825,6 +858,7 @@ class TestDefaultRegistry:
         assert "put" in namespace
         assert "set" not in namespace
         assert "lock" in namespace
+        assert "get_style" in namespace
         assert isinstance(namespace["color"], SimpleNamespace)
         assert isinstance(namespace["coord"], SimpleNamespace)
         assert isinstance(namespace["shape"], SimpleNamespace)
@@ -877,12 +911,15 @@ class TestDefaultRegistry:
             "m 40 60 l 60 60 l 60 50 l 40 50 m 40 70 l 60 70"
         )
 
-    def test_default_registry_does_not_expose_store_functions_to_code(
+    def test_default_registry_exposes_get_style_to_code(
         self,
     ) -> None:
-        env = DummyEnvironment()
+        env = DummyEnvironment(styles={"Default": make_style()})
         namespace = FUNCTION_REGISTRY.build_namespace(env, "code")
 
         assert "get" not in namespace
         assert "put" not in namespace
         assert "lock" not in namespace
+        assert "get_style" in namespace
+        get_style = cast(Callable[[str], StyleInfo], namespace["get_style"])
+        assert get_style("Default").name == "Default"

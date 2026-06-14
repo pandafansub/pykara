@@ -1,8 +1,8 @@
 # global
 
 Global functions are called directly, without a namespace. They are
-available in `template` and `mixin` directives, but **not** in `code`
-directives — use normal Python variables there instead.
+available in `template` directives. Some are also available in `code`
+directives.
 
 ## Available Functions
 
@@ -34,11 +34,27 @@ Return the value stored under `key`. If the key does not exist, return
 Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl,{\1c!get("main", style.primary_color)!}
 ```
 
+### `get_style(style_name)`
+
+Return an object with information for the named style. If the style does
+not exist, Pykara raises an error. This function is available in both
+`template` and `code` directives.
+
+```ass
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code setup,my_style = get_style("My Style")
+```
+
+The returned object exposes the normalized ASS style fields such as
+`name`, `fontname`, `fontsize`, `primary_colour`, `outline`, `shadow`,
+`alignment`, margins, and encoding. It also exposes the familiar color
+aliases `primary_color`, `secondary_color`, `outline_color`, and
+`shadow_color`.
+
 ## Scope Behavior
 
 A value set in any `line`, `word`, `syl`, or `char` template, or any mixin,
 can be read by any later template or mixin. The store persists across
-syllables, words, and lines — the last `put` wins unless the key is locked.
+syllables, words, and lines; the last `put` wins unless the key is locked.
 
 ## Notes
 
