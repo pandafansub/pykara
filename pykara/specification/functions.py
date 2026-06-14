@@ -223,6 +223,17 @@ FUNCTION_SPECIFICATIONS: dict[str, FunctionSpecification] = {
         "Convert an angle from degrees to radians.",
         frozenset({"template", "code"}),
     ),
+    "math.remap": FunctionSpecification(
+        "math.remap",
+        (
+            "math.remap("
+            "src: int | float | tuple, dst: int | float | tuple, values"
+            ") -> int | float | list | tuple"
+        ),
+        "math",
+        "Scale one value or sequence by the ratio between source and target.",
+        frozenset({"template", "code"}),
+    ),
     "random.random": FunctionSpecification(
         "random.random",
         "random.random() -> float",

@@ -4,6 +4,9 @@
 
 from __future__ import annotations
 
+import math
+from typing import Protocol, cast
+
 import pytest
 
 from pykara.data import Event, Metadata, Style
@@ -21,7 +24,30 @@ from pykara.engine.variable_context import (
     _ExpressionWordObject,
     _raise_unavailable_attribute,
 )
-from pykara.errors import ExecutionAttributeUnavailableError
+from pykara.errors import EngineError, ExecutionAttributeUnavailableError
+
+
+class MathNamespaceProtocol(Protocol):
+    def floor(self, x: float) -> int: ...
+
+    def ceil(self, x: float) -> int: ...
+
+    def fabs(self, x: float) -> float: ...
+
+    def sqrt(self, x: float) -> float: ...
+
+    def sin(self, x: float) -> float: ...
+
+    def cos(self, x: float) -> float: ...
+
+    def radians(self, x: float) -> float: ...
+
+    def remap(
+        self,
+        src: object,
+        dst: object,
+        values: object,
+    ) -> object: ...
 
 
 def make_style(name: str = "Default") -> Style:
@@ -170,6 +196,11 @@ def make_populated_environment() -> Environment:
     env.char_index = 0
     env.line_char_count = 2
     return env
+
+
+def math_namespace() -> MathNamespaceProtocol:
+    namespace = Environment(styles={}, declaration="template").as_dict()
+    return cast(MathNamespaceProtocol, namespace["math"])
 
 
 class TestRaiseUnavailableAttribute:
@@ -571,3 +602,57 @@ class TestEnvironmentExpressionObjectExposure:
         assert isinstance(namespace["word"], _ExpressionWordObject)
         assert isinstance(namespace["syl"], _ExpressionSyllableObject)
         assert isinstance(namespace["char"], _ExpressionCharObject)
+
+
+class TestEnvironmentExposedModules:
+    def test_as_dict_exposes_math_namespace(self) -> None:
+        functions = math_namespace()
+
+        assert functions.floor(3.9) == math.floor(3.9)
+        assert functions.ceil(3.1) == math.ceil(3.1)
+        assert functions.fabs(-2.5) == math.fabs(-2.5)
+        assert functions.sqrt(9) == math.sqrt(9)
+        assert functions.sin(math.radians(30)) == math.sin(math.radians(30))
+        assert functions.cos(math.radians(60)) == math.cos(math.radians(60))
+        assert functions.radians(180) == math.radians(180)
+
+    def test_math_remap_scales_numeric_values_and_sequences(self) -> None:
+        functions = math_namespace()
+
+        assert functions.remap(48, 22, [1, 0.75, 0]) == [
+            22 / 48,
+            0.75 * 22 / 48,
+            0,
+        ]
+        assert functions.remap((1920, 1080), (960, 720), 200) == (
+            200 * (960 / 1920) * (720 / 1080)
+        )
+        assert functions.remap((1920, 1080), (960, 720), (200, 60)) == (
+            200 * (960 / 1920) * (720 / 1080),
+            60 * (960 / 1920) * (720 / 1080),
+        )
+
+    @pytest.mark.parametrize(
+        ("src", "dst", "values", "message"),
+        [
+            ("48", 22, 1, "src must be"),
+            (48, (22,), 1, "dst must be int or float"),
+            ((1920,), 960, 1, "dst must be tuple"),
+            ((1920,), (960, 720), 1, "same length"),
+            (0, 22, 1, "must not be zero"),
+            ((0,), (960,), 1, "must not be zero"),
+            ((1920, "1080"), (960, 720), 1, "src tuple"),
+            ((1920, 1080), (960, "720"), 1, "dst tuple"),
+            (48, 22, "1", "values must be"),
+            (48, 22, [1, "0"], "values sequence"),
+        ],
+    )
+    def test_math_remap_reports_invalid_arguments_as_engine_errors(
+        self,
+        src: object,
+        dst: object,
+        values: object,
+        message: str,
+    ) -> None:
+        with pytest.raises(EngineError, match=message):
+            math_namespace().remap(src, dst, values)
