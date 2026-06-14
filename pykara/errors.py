@@ -225,6 +225,14 @@ class UnknownStyleReferenceError(EngineError):
         )
 
 
+class UnknownStyleLookupError(EngineError):
+    """Raised when get_style references a style that does not exist."""
+
+    def __init__(self, style_name: str) -> None:
+        self.style_name = style_name
+        super().__init__(f"Unknown style {style_name!r}")
+
+
 class ReservedNameError(EngineError):
     """Raised when code tries to bind a name reserved by Pykara."""
 

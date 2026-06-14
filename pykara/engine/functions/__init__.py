@@ -22,6 +22,7 @@ from pykara.engine.functions.layer import LayerSetFunction
 from pykara.engine.functions.motion import MotionFunction
 from pykara.engine.functions.retime import RETIME_MODES, RetimeFunction
 from pykara.engine.functions.store import GetFunction, LockFunction, PutFunction
+from pykara.engine.functions.styles import GetStyleFunction, StyleInfo
 
 FUNCTION_REGISTRY = FunctionRegistry()
 for _function in (
@@ -44,6 +45,7 @@ for _function in (
     ShapeCenterAtFunction(),
     ShapeDisplaceFunction(),
     ShapeSplitClipFunction(),
+    GetStyleFunction(),
 ):
     FUNCTION_REGISTRY.register(_function)
 
@@ -56,6 +58,7 @@ __all__ = [
     "Function",
     "FunctionRegistry",
     "GetFunction",
+    "GetStyleFunction",
     "GradientFunction",
     "HslToRgbFunction",
     "HsvToRgbFunction",
@@ -71,4 +74,5 @@ __all__ = [
     "ShapeDisplaceFunction",
     "ShapeRotateFunction",
     "ShapeSplitClipFunction",
+    "StyleInfo",
 ]

@@ -25,6 +25,7 @@ from pykara.declaration.template import (
     TemplateModifiers,
 )
 from pykara.engine.engine import Engine, _CodeRunner
+from pykara.engine.functions import StyleInfo
 from pykara.engine.variable_context import Environment, GeneratedLine
 from pykara.errors import (
     BoundMethodInExpressionError,
@@ -336,6 +337,28 @@ class TestCodeRunner:
         runner.run("helper = 7", env)
 
         assert env.user_namespace["helper"] == 7
+
+    def test_code_can_read_named_style_information(self) -> None:
+        runner = _CodeRunner()
+        env = make_env()
+        env.styles["My Style"] = make_style("My Style")
+
+        runner.run('my_style = get_style("My Style")', env)
+
+        my_style = cast(StyleInfo, env.user_namespace["my_style"])
+        assert my_style.name == "My Style"
+        assert my_style.primary_color == "&H00FFFFFF"
+        assert my_style.fontsize == 40.0
+
+    def test_code_raises_for_unknown_style_lookup(self) -> None:
+        runner = _CodeRunner()
+        env = make_env()
+
+        with pytest.raises(
+            TemplateRuntimeError,
+            match="Unknown style 'Missing'",
+        ):
+            runner.run('my_style = get_style("Missing")', env)
 
     def test_allows_reassigning_existing_user_namespace_values(self) -> None:
         runner = _CodeRunner()
