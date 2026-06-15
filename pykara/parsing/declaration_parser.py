@@ -417,17 +417,20 @@ class DeclarationParser:
                 parsed.active_styles.add(style)
             return
 
-        style_map = dict(preset.styles)
-        self._validate_preset_style_map_sources(declarations, style_map)
-        self._append_transformed_declarations(
-            parsed,
-            declarations,
-            lambda declaration: self._map_declaration_style(
-                declaration,
-                style_map,
-            ),
-        )
-        parsed.active_styles.update(style_map.values())
+        self._validate_preset_style_map_sources(declarations, preset.styles)
+        for declaration in declarations.iter_non_setup_declarations():
+            mapped = False
+            for source_style, target_style in preset.styles:
+                if declaration.style != source_style:
+                    continue
+                self._append_declaration(
+                    parsed,
+                    replace(declaration, style=target_style),
+                )
+                mapped = True
+            if not mapped:
+                self._append_declaration(parsed, declaration)
+        parsed.active_styles.update(target for _, target in preset.styles)
 
     def _append_declarations(
         self,
@@ -461,21 +464,10 @@ class DeclarationParser:
         for declaration in source.iter_non_setup_declarations():
             self._append_declaration(target, transform(declaration))
 
-    def _map_declaration_style(
-        self,
-        declaration: Declaration,
-        style_map: dict[str, str],
-    ) -> Declaration:
-        """Return a declaration copy with mapped style when applicable."""
-
-        if declaration.style not in style_map:
-            return declaration
-        return replace(declaration, style=style_map[declaration.style])
-
     def _validate_preset_style_map_sources(
         self,
         declarations: ParsedDeclarations,
-        style_map: dict[str, str],
+        style_map: tuple[tuple[str, str], ...],
     ) -> None:
         """Ensure every mapped preset source style exists in the preset."""
 
@@ -485,7 +477,9 @@ class DeclarationParser:
             if declaration.style
         }
         missing_sources = tuple(
-            style for style in style_map if style not in preset_styles
+            style
+            for style in {source for source, _ in style_map}
+            if style not in preset_styles
         )
         if not missing_sources:
             return

@@ -540,6 +540,47 @@ class TestPresetDeclarationParser:
             "Default",
         ]
 
+    def test_preset_map_can_reuse_source_style(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        preset = tmp_path / "opening_preset.ass"
+        write_preset(
+            preset,
+            [
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,OP-Romaji,,"
+                    "0,0,0,template syl,romaji"
+                ),
+                (
+                    "Comment: 0,0:00:00.00,0:00:00.00,OP-Translation,,"
+                    "0,0,0,template syl,translation"
+                ),
+            ],
+        )
+        parser = self.build_parser(tmp_path)
+
+        parsed = parser.parse(
+            [
+                make_event(
+                    effect="preset",
+                    text=(
+                        '"opening_preset.ass" map '
+                        '"OP-Romaji" to "OP-Kanji", '
+                        '"OP-Romaji" to "OP-Romaji", '
+                        '"OP-Translation" to "OP-Translation"'
+                    ),
+                    style="Default",
+                )
+            ]
+        )
+
+        assert [declaration.style for declaration in parsed.syl] == [
+            "OP-Kanji",
+            "OP-Romaji",
+            "OP-Translation",
+        ]
+
     def test_preset_map_rejects_missing_source_style(
         self,
         tmp_path: Path,
