@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pykara"
-version = "0.5"
+version = "0.6"
 description = "Karaoke effect templating engine for ASS subtitle files."
 readme = "README.md"
 requires-python = ">=3.14"

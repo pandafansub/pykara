@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6 - 2026-06-14
+
+### Added
+
+- Added the global `get_style` helper for accessing ASS style definitions.
+- Added the `math.remap` helper for converting values between numeric ranges.
+
 ## 0.5 - 2026-06-12
 
 ### Added
