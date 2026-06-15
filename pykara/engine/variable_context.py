@@ -16,7 +16,7 @@ from pykara.data.events.karaoke.syllable import Syllable, Word
 from pykara.declaration import Scope
 from pykara.declaration.template.modifiers import TemplateModifiers
 from pykara.engine.assets import assets
-from pykara.engine.functions import FUNCTION_REGISTRY
+from pykara.engine.functions import FUNCTION_REGISTRY, StyleInfo
 from pykara.engine.safe_builtins import SAFE_BUILTINS
 from pykara.errors import EngineError, ExecutionAttributeUnavailableError
 from pykara.fbf.timeline import FrameRateSource
@@ -737,46 +737,14 @@ class GeneratedLine:
         )
 
 
-class _ExpressionStyleObject:
-    """Public `style` object exposed to expression evaluation."""
-
-    __slots__ = ("_env",)
-
-    def __init__(self, env: Environment) -> None:
-        self._env = env
-
-    @property
-    def name(self) -> str:
-        return self._style().name
-
-    @property
-    def primary_color(self) -> str:
-        return self._style().primary_colour
-
-    @property
-    def secondary_color(self) -> str:
-        return self._style().secondary_colour
-
-    @property
-    def outline_color(self) -> str:
-        return self._style().outline_colour
-
-    @property
-    def shadow_color(self) -> str:
-        return self._style().back_colour
-
-    @property
-    def outline(self) -> float:
-        return self._style().outline
-
-    def _style(self) -> Style:
-        if self._env.reference_style is not None:
-            return self._env.reference_style
-        if self._env.line is not None:
-            return self._env.line.styleref
-        if self._env.source_line is not None:
-            return self._env.styles[self._env.source_line.style]
-        _raise_unavailable_attribute("style")
+def _style_info_from_context(env: Environment) -> StyleInfo:
+    if env.reference_style is not None:
+        return StyleInfo.from_style(env.reference_style)
+    if env.line is not None:
+        return StyleInfo.from_style(env.line.styleref)
+    if env.source_line is not None:
+        return StyleInfo.from_style(env.styles[env.source_line.style])
+    _raise_unavailable_attribute("style")
 
 
 class _ExpressionMetadataObject:
@@ -1463,14 +1431,15 @@ class Environment:
         return namespace
 
     def _expression_object(self, name: str) -> object:
+        if name == "style":
+            return _style_info_from_context(self)
+
         cached = self._expression_object_cache.get(name)
         if cached is not None:
             return cached
 
         if name == "line":
             cached = _ExpressionLineObject(self)
-        elif name == "style":
-            cached = _ExpressionStyleObject(self)
         elif name == "metadata":
             cached = _ExpressionMetadataObject(self)
         elif name == "word":

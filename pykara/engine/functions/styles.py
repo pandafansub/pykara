@@ -2,15 +2,25 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import ClassVar, Protocol, cast
 
 from pykara.data import Style
 from pykara.errors import UnknownStyleLookupError
 
+_STYLE_COLOR_PATTERN = re.compile(r"&H([0-9A-Fa-f]{2})([0-9A-Fa-f]{6})&?")
+
 
 class _StylesEnvironment(Protocol):
     styles: dict[str, Style]
+
+
+def _style_color_to_override_color(style_color: str) -> str:
+    match = _STYLE_COLOR_PATTERN.fullmatch(style_color)
+    if match is None:
+        return "&HFFFFFF&"
+    return f"&H{match.group(2).upper()}&"
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,12 +28,12 @@ class StyleInfo:
     """Public style information returned by ``get_style``."""
 
     name: str
-    fontname: str
-    fontsize: float
-    primary_colour: str
-    secondary_colour: str
-    outline_colour: str
-    back_colour: str
+    font_name: str
+    font_size: float
+    primary_color: str
+    secondary_color: str
+    outline_color: str
+    shadow_color: str
     bold: bool
     italic: bool
     underline: bool
@@ -47,12 +57,14 @@ class StyleInfo:
         """Build public style information from one parsed ASS style."""
         return cls(
             name=style.name,
-            fontname=style.fontname,
-            fontsize=style.fontsize,
-            primary_colour=style.primary_colour,
-            secondary_colour=style.secondary_colour,
-            outline_colour=style.outline_colour,
-            back_colour=style.back_colour,
+            font_name=style.fontname,
+            font_size=style.fontsize,
+            primary_color=_style_color_to_override_color(style.primary_colour),
+            secondary_color=_style_color_to_override_color(
+                style.secondary_colour
+            ),
+            outline_color=_style_color_to_override_color(style.outline_colour),
+            shadow_color=_style_color_to_override_color(style.back_colour),
             bold=style.bold,
             italic=style.italic,
             underline=style.underline,
@@ -71,26 +83,6 @@ class StyleInfo:
             margin_b=style.margin_b,
             encoding=style.encoding,
         )
-
-    @property
-    def primary_color(self) -> str:
-        return self.primary_colour
-
-    @property
-    def secondary_color(self) -> str:
-        return self.secondary_colour
-
-    @property
-    def outline_color(self) -> str:
-        return self.outline_colour
-
-    @property
-    def shadow_color(self) -> str:
-        return self.back_colour
-
-    @property
-    def margin_v(self) -> int:
-        return self.margin_t
 
 
 class GetStyleFunction:

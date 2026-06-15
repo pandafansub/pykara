@@ -44,11 +44,12 @@ not exist, Pykara raises an error. This function is available in both
 Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code setup,my_style = get_style("My Style")
 ```
 
-The returned object exposes the normalized ASS style fields such as
-`name`, `fontname`, `fontsize`, `primary_colour`, `outline`, `shadow`,
-`alignment`, margins, and encoding. It also exposes the familiar color
-aliases `primary_color`, `secondary_color`, `outline_color`, and
-`shadow_color`.
+The returned object exposes public style fields such as `name`,
+`font_name`, `font_size`, `primary_color`, `secondary_color`,
+`outline_color`, `shadow_color`, `outline`, `shadow`, `alignment`,
+margins, and encoding.
+Color values are normalized for ASS override tags, so a style color like
+`&H00FFFFFF` is exposed as `&HFFFFFF&`.
 
 ## Scope Behavior
 

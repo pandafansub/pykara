@@ -12,6 +12,7 @@ import pytest
 from pykara.data import Event, Metadata, Style
 from pykara.data.events.karaoke import Karaoke
 from pykara.data.events.karaoke.syllable import Syllable, Word
+from pykara.engine.functions import StyleInfo
 from pykara.engine.variable_context import (
     Environment,
     GeneratedLine,
@@ -19,7 +20,6 @@ from pykara.engine.variable_context import (
     _ExpressionCharObject,
     _ExpressionLineObject,
     _ExpressionMetadataObject,
-    _ExpressionStyleObject,
     _ExpressionSyllableObject,
     _ExpressionWordObject,
     _raise_unavailable_attribute,
@@ -251,38 +251,6 @@ class TestVarContext:
         assert context.char_i == 1
         assert context.char_n == 2
         assert context.char_y == 16
-
-
-class TestExpressionStyleObject:
-    def test_reads_style_properties_from_generated_line(self) -> None:
-        env = make_populated_environment()
-        style_object = _ExpressionStyleObject(env)
-
-        assert style_object.name == "Default"
-        assert style_object.primary_color == "&H00FFFFFF"
-        assert style_object.secondary_color == "&H0000FFFF"
-        assert style_object.outline_color == "&H00112233"
-        assert style_object.shadow_color == "&H64000000"
-        assert style_object.outline == 2.0
-
-    def test_reads_style_via_source_line_when_no_generated_line(
-        self,
-    ) -> None:
-        env = make_populated_environment()
-        env.line = None
-        style_object = _ExpressionStyleObject(env)
-
-        assert style_object.primary_color == "&H00FFFFFF"
-
-    def test_raises_when_no_style_context_is_available(self) -> None:
-        env = Environment(
-            styles={"Default": make_style()},
-            declaration="template",
-        )
-        style_object = _ExpressionStyleObject(env)
-
-        with pytest.raises(ExecutionAttributeUnavailableError):
-            _ = style_object.primary_color
 
 
 class TestExpressionMetadataObject:
@@ -597,11 +565,26 @@ class TestEnvironmentExpressionObjectExposure:
         namespace = env.as_dict()
 
         assert isinstance(namespace["line"], _ExpressionLineObject)
-        assert isinstance(namespace["style"], _ExpressionStyleObject)
+        assert isinstance(namespace["style"], StyleInfo)
+        assert env.line is not None
+        assert namespace["style"] == StyleInfo.from_style(env.line.styleref)
         assert isinstance(namespace["metadata"], _ExpressionMetadataObject)
         assert isinstance(namespace["word"], _ExpressionWordObject)
         assert isinstance(namespace["syl"], _ExpressionSyllableObject)
         assert isinstance(namespace["char"], _ExpressionCharObject)
+
+    def test_style_object_exposes_full_style_info_contract(self) -> None:
+        env = make_populated_environment()
+
+        style = cast(StyleInfo, env.as_dict()["style"])
+
+        assert style.name == "Default"
+        assert style.primary_color == "&HFFFFFF&"
+        assert style.secondary_color == "&H00FFFF&"
+        assert style.outline_color == "&H112233&"
+        assert style.shadow_color == "&H000000&"
+        assert style.font_name == "Arial"
+        assert style.font_size == 40.0
 
 
 class TestEnvironmentExposedModules:

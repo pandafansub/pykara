@@ -347,8 +347,8 @@ class TestCodeRunner:
 
         my_style = cast(StyleInfo, env.user_namespace["my_style"])
         assert my_style.name == "My Style"
-        assert my_style.primary_color == "&H00FFFFFF"
-        assert my_style.fontsize == 40.0
+        assert my_style.primary_color == "&HFFFFFF&"
+        assert my_style.font_size == 40.0
 
     def test_code_raises_for_unknown_style_lookup(self) -> None:
         runner = _CodeRunner()
