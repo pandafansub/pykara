@@ -128,7 +128,7 @@ class TestTextRenderer:
             env,
         )
 
-        assert rendered == "Default-&H00FFFFFF-&H00000000-2.0"
+        assert rendered == "Default-&HFFFFFF&-&H000000&-2.0"
 
     def test_exposes_source_and_text_views_in_expressions(self) -> None:
         renderer = TextRenderer()

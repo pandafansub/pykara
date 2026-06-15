@@ -827,15 +827,14 @@ class TestGetStyleFunction:
 
         assert isinstance(result, StyleInfo)
         assert result.name == "My Style"
-        assert result.fontname == "Arial"
-        assert result.fontsize == 36.0
-        assert result.primary_colour == "&H00FFFFFF"
-        assert result.primary_color == "&H00FFFFFF"
-        assert result.secondary_color == "&H000000FF"
-        assert result.outline_color == "&H00000000"
-        assert result.shadow_color == "&H00000000"
+        assert result.font_name == "Arial"
+        assert result.font_size == 36.0
+        assert result.primary_color == "&HFFFFFF&"
+        assert result.secondary_color == "&H0000FF&"
+        assert result.outline_color == "&H000000&"
+        assert result.shadow_color == "&H000000&"
         assert result.outline == 2.0
-        assert result.margin_v == 10
+        assert result.margin_t == 10
 
     def test_raises_for_unknown_style(self) -> None:
         env = DummyEnvironment(styles={"Default": make_style()})

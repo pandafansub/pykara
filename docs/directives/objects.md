@@ -115,11 +115,29 @@ Available only while rendering a template with a `loop` modifier.
 | Property | Description |
 |----------|-------------|
 | `name` | Style name. |
-| `primary_color` | Primary color in ASS format. |
-| `secondary_color` | Secondary color in ASS format. |
-| `outline_color` | Outline color in ASS format. |
-| `shadow_color` | Shadow color in ASS format. |
+| `font_name` | Font face name. |
+| `font_size` | Font size. |
+| `primary_color` | Primary color as normalized ASS override color, such as `&HFFFFFF&`. |
+| `secondary_color` | Secondary color as normalized ASS override color. |
+| `outline_color` | Outline color as normalized ASS override color. |
+| `shadow_color` | Shadow color as normalized ASS override color. |
+| `bold` | Whether the style is bold. |
+| `italic` | Whether the style is italic. |
+| `underline` | Whether the style is underlined. |
+| `strike_out` | Whether the style uses strikeout. |
+| `scale_x` | Horizontal scale percentage. |
+| `scale_y` | Vertical scale percentage. |
+| `spacing` | Letter spacing. |
+| `angle` | Rotation angle. |
+| `border_style` | ASS border style. |
 | `outline` | Outline width. |
+| `shadow` | Shadow depth. |
+| `alignment` | ASS alignment number. |
+| `margin_l` | Left margin. |
+| `margin_r` | Right margin. |
+| `margin_t` | Top margin. |
+| `margin_b` | Bottom margin. |
+| `encoding` | ASS character encoding. |
 
 ### `metadata`
 
