@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.7 - 2026-06-15
+
+### Changed
+
+- Refined the public `StyleInfo` API exposed by style helpers and template
+  context values.
+
+### Fixed
+
+- Fixed preset style mapping when the same source style is reused for multiple
+  target styles.
+
 ## 0.6 - 2026-06-14
 
 ### Added
