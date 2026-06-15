@@ -60,3 +60,12 @@ Convert degrees to radians.
 ```ass
 Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl,{\frz!math.cos(math.radians($syl_i * 60)) * 10!}
 ```
+
+### `math.remap(src, dst, values)`
+
+Scale one value or a list/tuple by the ratio between `src` and `dst`.
+
+```ass
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl,{\fscx!math.remap(48, 22, 100)!}
+Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,template syl,{\blur!math.remap((1920, 1080), (960, 720), 3)!}
+```

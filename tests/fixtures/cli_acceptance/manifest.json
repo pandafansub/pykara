@@ -1541,6 +1541,7 @@
       "math.sin": ["tests/fixtures/cli_acceptance/valid_function_matrix.ass"],
       "math.cos": ["tests/fixtures/cli_acceptance/valid_function_matrix.ass"],
       "math.radians": ["tests/fixtures/cli_acceptance/valid_function_matrix.ass"],
+      "math.remap": ["tests/test_variable_context.py"],
       "random.random": ["tests/fixtures/acceptance/basic_24_code_line_function1.ass", "tests/fixtures/cli_acceptance/valid_function_matrix.ass"],
       "random.randint": ["tests/fixtures/acceptance/basic_06_random_color_code_line.ass", "tests/fixtures/cli_acceptance/valid_function_matrix.ass", "tests/fixtures/cli_acceptance/valid_cli_seed_reseed.ass"],
       "random.choice": ["tests/fixtures/cli_acceptance/valid_function_matrix.ass"],

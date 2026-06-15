@@ -104,6 +104,7 @@ EXPECTED_MATH_FUNCTIONS = {
     "math.sin",
     "math.cos",
     "math.radians",
+    "math.remap",
 }
 
 EXPECTED_COLOR_FUNCTIONS = {

@@ -8,7 +8,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, fields
 from types import SimpleNamespace
-from typing import Any, NoReturn, TypeVar
+from typing import Any, NoReturn, TypeVar, cast
 
 from pykara.data import Karaoke, Metadata, Style
 from pykara.data.events.event import Event
@@ -18,7 +18,7 @@ from pykara.declaration.template.modifiers import TemplateModifiers
 from pykara.engine.assets import assets
 from pykara.engine.functions import FUNCTION_REGISTRY
 from pykara.engine.safe_builtins import SAFE_BUILTINS
-from pykara.errors import ExecutionAttributeUnavailableError
+from pykara.errors import EngineError, ExecutionAttributeUnavailableError
 from pykara.fbf.timeline import FrameRateSource
 from pykara.motion.common import QueuedEventExpansion
 from pykara.specification import (
@@ -497,6 +497,8 @@ _RESERVED_EXECUTION_NAMES = frozenset(
     }
 )
 
+type _RemapNumber = int | float
+
 
 class _MathNamespace:
     """Immutable math helper namespace exposed to execution."""
@@ -510,6 +512,102 @@ class _MathNamespace:
     radians = math.radians
     sin = math.sin
     sqrt = math.sqrt
+
+    def remap(
+        self,
+        src: object,
+        dst: object,
+        values: object,
+    ) -> object:
+        """Scale values by the ratio between source and target."""
+
+        factor = self._remap_factor(src, dst)
+
+        if isinstance(values, (int, float)):
+            return values * factor
+
+        if isinstance(values, list):
+            value_list = cast(list[object], values)
+            return [
+                self._scale_remap_value(value, factor) for value in value_list
+            ]
+
+        if isinstance(values, tuple):
+            value_tuple = cast(tuple[object, ...], values)
+            return tuple(
+                self._scale_remap_value(value, factor) for value in value_tuple
+            )
+
+        raise EngineError(
+            "math.remap() values must be int, float, list, or tuple; "
+            f"got {type(values).__name__!r}."
+        )
+
+    def _remap_factor(self, src: object, dst: object) -> float:
+        if isinstance(src, (int, float)):
+            if not isinstance(dst, (int, float)):
+                raise EngineError(
+                    "math.remap() dst must be int or float when src is "
+                    f"numeric; got {type(dst).__name__!r}."
+                )
+            if src == 0:
+                raise EngineError("math.remap() src must not be zero.")
+            return dst / src
+
+        if isinstance(src, tuple):
+            return self._tuple_remap_factor(cast(tuple[object, ...], src), dst)
+
+        raise EngineError(
+            "math.remap() src must be int, float, or tuple; "
+            f"got {type(src).__name__!r}."
+        )
+
+    def _tuple_remap_factor(
+        self, src: tuple[object, ...], dst: object
+    ) -> float:
+        if not isinstance(dst, tuple):
+            raise EngineError(
+                "math.remap() dst must be tuple when src is tuple; "
+                f"got {type(dst).__name__!r}."
+            )
+        dst_values = cast(tuple[object, ...], dst)
+        if len(src) != len(dst_values):
+            raise EngineError(
+                "math.remap() src and dst tuples must have the same length."
+            )
+
+        factor = 1.0
+        for source_value, target_value in zip(src, dst_values, strict=True):
+            source_number = self._remap_tuple_number(source_value, "src")
+            target_number = self._remap_tuple_number(target_value, "dst")
+            if source_number == 0:
+                raise EngineError(
+                    "math.remap() src tuple values must not be zero."
+                )
+            factor *= target_number / source_number
+        return factor
+
+    def _remap_tuple_number(self, value: object, label: str) -> _RemapNumber:
+        if isinstance(value, (int, float)):
+            return value
+
+        raise EngineError(
+            f"math.remap() {label} tuple must contain only int or float "
+            f"values; got {type(value).__name__!r}."
+        )
+
+    def _scale_remap_value(
+        self,
+        value: object,
+        factor: float,
+    ) -> _RemapNumber:
+        if isinstance(value, (int, float)):
+            return value * factor
+
+        raise EngineError(
+            "math.remap() values sequence must contain only int or float "
+            f"values; got {type(value).__name__!r}."
+        )
 
 
 @dataclass(frozen=True, slots=True)
