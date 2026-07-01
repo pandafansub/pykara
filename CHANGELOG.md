@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.8 - 2026-07-01
+
+### Fixed
+
+- Fixed false unused-variable warnings when an included Python file reads a
+  value defined by an earlier `code setup` line.
+
 ## 0.7 - 2026-06-15
 
 ### Changed
