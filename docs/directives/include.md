@@ -25,6 +25,25 @@ Comment: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,code setup,include "palette.py",
 Files run from left to right. Values assigned by included files become
 available to later `code`, `template`, and `mixin` directives.
 
+## Using Existing Values
+
+Variables defined by earlier `code setup` directives can be read by the
+included `.py` file.
+
+```ass
+Comment: 0,0:00:00.00,0:00:00.00,Romaji,,0,0,0,code setup all,palette_name = "night"
+Comment: 0,0:00:00.00,0:00:00.00,Romaji,,0,0,0,code setup all,include "palettes.py"
+Comment: 0,0:00:00.00,0:00:00.00,Romaji,,0,0,0,template syl,{\1c$primary_color\3c$outline_color}
+```
+
+```python
+palette = {
+    "night": (assets.colors.cyan, assets.colors.indigo),
+    "sunset": (assets.colors.orange, assets.colors.red),
+}[palette_name]
+primary_color, outline_color = palette
+```
+
 ## Paths
 
 Relative paths are resolved from the directory of the input `.ass` file.

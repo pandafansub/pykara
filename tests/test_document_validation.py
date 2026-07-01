@@ -753,6 +753,121 @@ class TestCrossValidator:
 
         assert report.violations == ()
 
+    def test_counts_include_loaded_names_as_same_style_code_usage(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "common.py").write_text(
+            (
+                "if use_blue:\n"
+                "    color = assets.colors.blue\n"
+                "else:\n"
+                "    color = assets.colors.red\n"
+            ),
+            encoding="utf-8",
+        )
+        declarations = ParsedDeclarations(
+            setup=[
+                CodeDeclaration(
+                    body=CodeBody("use_blue = False"),
+                    scope=Scope.SETUP,
+                    style="Default",
+                ),
+                CodeDeclaration(
+                    body=CodeBody('include "common.py"'),
+                    scope=Scope.SETUP,
+                    style="Default",
+                    base_dir=tmp_path,
+                ),
+            ],
+        )
+
+        report = CrossValidator().validate(make_document(), declarations)
+
+        assert report.violations == ()
+
+    def test_include_loaded_names_must_match_code_style_context(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "common.py").write_text(
+            "color = 'blue' if use_blue else 'red'\n",
+            encoding="utf-8",
+        )
+        declarations = ParsedDeclarations(
+            setup=[
+                CodeDeclaration(
+                    body=CodeBody("use_blue = False"),
+                    scope=Scope.SETUP,
+                    style="Default",
+                ),
+                CodeDeclaration(
+                    body=CodeBody('include "common.py"'),
+                    scope=Scope.SETUP,
+                    style="Alt",
+                    base_dir=tmp_path,
+                ),
+            ],
+        )
+
+        report = CrossValidator().validate(make_document(), declarations)
+
+        assert "name='use_blue', kind=variable, scope=setup" in {
+            violation.context for violation in report.warnings
+        }
+
+    def test_include_counts_styles_modifier_as_code_usage(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "common.py").write_text("color = 'red'\n")
+        declarations = ParsedDeclarations(
+            setup=[
+                CodeDeclaration(
+                    body=CodeBody("my_styles = ('Default',)"),
+                    scope=Scope.SETUP,
+                    style="",
+                ),
+                CodeDeclaration(
+                    body=CodeBody('include "common.py"'),
+                    scope=Scope.SETUP,
+                    modifiers=CodeModifiers(styles="my_styles"),
+                    style="Default",
+                    base_dir=tmp_path,
+                ),
+            ],
+        )
+
+        report = CrossValidator().validate(make_document(), declarations)
+
+        assert "name='my_styles', kind=variable, scope=setup" not in {
+            violation.context for violation in report.warnings
+        }
+
+    def test_all_style_code_usage_matches_style_specific_reference(
+        self,
+    ) -> None:
+        declarations = ParsedDeclarations(
+            setup=[
+                make_code_declaration(
+                    source="use_blue = False",
+                    scope=Scope.SETUP,
+                    style="",
+                ),
+                make_code_declaration(
+                    source="color = 'blue' if use_blue else 'red'",
+                    scope=Scope.SETUP,
+                    style="Alt",
+                ),
+            ],
+        )
+
+        report = CrossValidator().validate(make_document(), declarations)
+
+        assert tuple(violation.context for violation in report.warnings) == (
+            "name='color', kind=variable, scope=setup",
+        )
+
     def test_invalid_code_syntax_does_not_add_unused_variable_warning(
         self,
     ) -> None:

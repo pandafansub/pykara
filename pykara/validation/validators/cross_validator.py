@@ -7,12 +7,15 @@ from collections.abc import Iterable
 from pykara.adapters import SubtitleDocument
 from pykara.parsing import (
     CodeDeclaration,
+    MixinDeclaration,
     ParsedDeclarations,
+    TemplateDeclaration,
 )
 from pykara.validation.reports import ValidationReport, Violation
 from pykara.validation.rules.cross_rules import (
     AllowedVariableScopeRule,
     BareStringArgumentReference,
+    CodeNameReference,
     DeclarationStyleReference,
     EventStyleReference,
     ExistingStyleRule,
@@ -155,14 +158,21 @@ class CrossValidator:
         self,
         declarations: ParsedDeclarations,
     ) -> tuple[Violation, ...]:
-        used_names = frozenset(self._iter_used_code_names(declarations))
-        rule = UnusedCodeDeclarationRule(used_names=used_names)
-        return tuple(
-            violation
-            for declaration in declarations.iter_code_declarations()
-            for declared_name in iter_code_declared_names(declaration)
-            if (violation := rule.check(declared_name)) is not None
-        )
+        references = tuple(self._iter_used_code_names(declarations))
+        unused_rule = UnusedCodeDeclarationRule(used_names=frozenset())
+        violations: list[Violation] = []
+        for declaration in declarations.iter_code_declarations():
+            for declared_name in iter_code_declared_names(declaration):
+                if self._has_compatible_code_name_reference(
+                    declared_name.declaration,
+                    declared_name.name,
+                    references,
+                ):
+                    continue
+                violation = unused_rule.check(declared_name)
+                if violation is not None:
+                    violations.append(violation)
+        return tuple(violations)
 
     def _validate_mixin_variables(
         self,
@@ -221,7 +231,7 @@ class CrossValidator:
     def _iter_used_code_names(
         self,
         declarations: ParsedDeclarations,
-    ) -> Iterable[str]:
+    ) -> Iterable[CodeNameReference]:
         for declaration in declarations.iter_code_declarations():
             yield from iter_code_name_references(declaration)
 
@@ -230,3 +240,24 @@ class CrossValidator:
             *declarations.iter_mixin_declarations(),
         ):
             yield from iter_template_code_name_references(declaration)
+
+    def _has_compatible_code_name_reference(
+        self,
+        declaration: CodeDeclaration,
+        name: str,
+        references: tuple[CodeNameReference, ...],
+    ) -> bool:
+        return any(
+            reference.name == name
+            and self._code_contexts_match(declaration, reference.declaration)
+            for reference in references
+        )
+
+    def _code_contexts_match(
+        self,
+        declaration: CodeDeclaration,
+        reference: CodeDeclaration | TemplateDeclaration | MixinDeclaration,
+    ) -> bool:
+        if not declaration.style or not reference.style:
+            return True
+        return declaration.style == reference.style

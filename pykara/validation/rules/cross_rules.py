@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 from pykara.data import Event
 from pykara.parsing import (
@@ -22,6 +23,11 @@ from pykara.support.code_analysis import (
     collect_assigned_name_kinds,
     collect_assigned_names,
     collect_loaded_names,
+)
+from pykara.support.include_parser import (
+    IncludeParseError,
+    is_include_source,
+    parse_include_paths,
 )
 from pykara.validation.reports import Severity, Violation
 
@@ -120,6 +126,14 @@ class CodeNameDeclaration:
 
 
 @dataclass(frozen=True, slots=True)
+class CodeNameReference:
+    """One user-facing name reference from a code/template declaration."""
+
+    declaration: CodeDeclaration | TemplateDeclaration | MixinDeclaration
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
 class FxModifierUsage:
     """One declaration using the fx modifier."""
 
@@ -166,8 +180,11 @@ def iter_code_declared_names(
 
 def iter_code_name_references(
     declaration: CodeDeclaration,
-) -> tuple[str, ...]:
+) -> tuple[CodeNameReference, ...]:
     """Return Python names read by one code declaration."""
+
+    if is_include_source(declaration.body.source):
+        return _iter_include_code_name_references(declaration)
 
     try:
         tree = ast.parse(declaration.body.source, mode="exec")
@@ -177,12 +194,61 @@ def iter_code_name_references(
     references = set(collect_loaded_names(tree))
     if declaration.modifiers.styles is not None:
         references.add(declaration.modifiers.styles)
-    return tuple(sorted(references))
+    return _code_name_references(declaration, references)
+
+
+def _iter_include_code_name_references(
+    declaration: CodeDeclaration,
+) -> tuple[CodeNameReference, ...]:
+    try:
+        paths = parse_include_paths(declaration.body.source)
+    except IncludeParseError:
+        return ()
+
+    references: set[str] = set()
+    if declaration.modifiers.styles is not None:
+        references.add(declaration.modifiers.styles)
+    for include_path in paths:
+        source = _read_include_source(include_path, declaration.base_dir)
+        if source is None:
+            continue
+        try:
+            tree = ast.parse(source, mode="exec")
+        except SyntaxError:
+            continue
+        references.update(collect_loaded_names(tree))
+
+    return _code_name_references(declaration, references)
+
+
+def _code_name_references(
+    declaration: CodeDeclaration | TemplateDeclaration | MixinDeclaration,
+    names: set[str],
+) -> tuple[CodeNameReference, ...]:
+    return tuple(
+        CodeNameReference(declaration=declaration, name=name)
+        for name in sorted(names)
+    )
+
+
+def _read_include_source(
+    include_path: str,
+    base_dir: Path | None,
+) -> str | None:
+    path = Path(include_path)
+    if not path.is_absolute():
+        path = (base_dir or Path.cwd()) / path
+    if path.resolve(strict=False).suffix != ".py":
+        return None
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return None
 
 
 def iter_template_code_name_references(
     declaration: TemplateDeclaration | MixinDeclaration,
-) -> tuple[str, ...]:
+) -> tuple[CodeNameReference, ...]:
     """Return code name references from a template-like declaration."""
 
     references = set(iter_template_variables(declaration))
@@ -192,7 +258,7 @@ def iter_template_code_name_references(
         references.update(_iter_expression_variable_references(expression))
 
     references.update(_iter_modifier_variable_references(declaration))
-    return tuple(sorted(references))
+    return _code_name_references(declaration, references)
 
 
 def _iter_expression_variable_references(expression: str) -> tuple[str, ...]:
