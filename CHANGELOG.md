@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.9 - 2026-07-01
+
+### Added
+
+- Allow gradient usage with drawing shapes in karaoke templates.
+
 ## 0.8 - 2026-07-01
 
 ### Fixed
