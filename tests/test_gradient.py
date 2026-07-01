@@ -237,6 +237,66 @@ class TestGradientEngineIntegration:
         assert all(GRADIENT_PLACEHOLDER not in event.text for event in result)
         assert len({event.text for event in result}) > 1
 
+    def test_gradient_uses_p1_shape_bounds(self) -> None:
+        engine = build_engine()
+        template = TemplateDeclaration(
+            body=TemplateBody(
+                r"{\an5\fscx100\fscy100\bord0\shad0\1c"
+                r"!gradient.make(['&H0000FF&','&HFF0000&'], step=50)!"
+                r"\p1}m -100 -50 l 100 -50 100 50 -100 50{\p0}"
+            ),
+            scope=Scope.LINE,
+            modifiers=TemplateModifiers(no_text=True),
+        )
+
+        result = engine.apply(
+            [make_event()],
+            ParsedDeclarations(line=[template]),
+            Metadata(
+                res_x=1280,
+                res_y=720,
+                raw={"PlaybackFPS": "24"},
+            ),
+            {"Default": make_style()},
+        )
+
+        assert len(result) == 3
+        assert all(r"\pos(740,410)" in event.text for event in result)
+        assert result[0].text.count(r"\clip(") == 1
+        assert r"\clip(539,309,741,360)" in result[0].text
+        assert all(GRADIENT_PLACEHOLDER not in event.text for event in result)
+
+    def test_gradient_uses_p1_shape_bounds_with_explicit_position(
+        self,
+    ) -> None:
+        engine = build_engine()
+        template = TemplateDeclaration(
+            body=TemplateBody(
+                r"{\an5\pos(817.89,623.18)\fscx100\fscy100\bord0\shad0\1c"
+                r"!gradient.make(['&H0000FF&','&HFF0000&'], step=100)!"
+                r"\p1}m -178.62 -127.95 l 178.62 -127.95 "
+                r"178.62 127.95 -178.62 127.95"
+            ),
+            scope=Scope.LINE,
+            modifiers=TemplateModifiers(no_text=True),
+        )
+
+        result = engine.apply(
+            [make_event()],
+            ParsedDeclarations(line=[template]),
+            Metadata(
+                res_x=1280,
+                res_y=720,
+                raw={"PlaybackFPS": "24"},
+            ),
+            {"Default": make_style()},
+        )
+
+        assert result
+        assert all(r"\pos(817.89,623.18)" in event.text for event in result)
+        assert r"\clip(459.65,366.28,818.89,467.28)" in result[0].text
+        assert all(GRADIENT_PLACEHOLDER not in event.text for event in result)
+
     def test_gradient_implicit_line_position_uses_style_margins(self) -> None:
         engine = build_engine()
         template = TemplateDeclaration(

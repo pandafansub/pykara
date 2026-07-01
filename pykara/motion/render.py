@@ -6,6 +6,7 @@ import math
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import cast
 
 from pykara.data import Event, Style
 from pykara.errors import EngineError
@@ -60,6 +61,11 @@ _MOVE_TAG_RE = re.compile(r"\\move\s*\(")
 _POS_TAG_RE = re.compile(r"\\pos\s*\(")
 _UNSUPPORTED_GEOMETRY_TAG_RE = re.compile(r"\\(?:frz|frx|fry|fax|fay)\b")
 _COLOR_CONTROL_TAG_RE = re.compile(r"\\(?:(?:[1-4])?c)\b")
+_P_TAG_RE = re.compile(r"\\p(?![A-Za-z])\s*([0-9]+)")
+_DRAWING_COORDINATE_RE = re.compile(
+    r"(-?(?:\d+(?:\.\d*)?|\.\d+))\s+(-?(?:\d+(?:\.\d*)?|\.\d+))",
+)
+_POSITION_TAG_COMPONENT_COUNT = 2
 _BLEED = 1.0
 _SAFE_PAD = 1.0
 _OVERRIDE_BLOCK_RE = re.compile(r"\{[^}]*\}")
@@ -675,6 +681,114 @@ def _resolved_width(
     return max(0.0, glyph_width * font_ratio * scale_ratio_x + spacing_width)
 
 
+def _position_from_state(
+    state: Mapping[str, object],
+) -> tuple[float, float] | None:
+    raw_pos = state.get("pos")
+    if not isinstance(raw_pos, list):
+        return None
+
+    pos = cast("list[object]", raw_pos)
+    if len(pos) < _POSITION_TAG_COMPONENT_COUNT:
+        return None
+
+    raw_x = pos[0]
+    raw_y = pos[1]
+    if not isinstance(raw_x, int | float) or not isinstance(
+        raw_y,
+        int | float,
+    ):
+        return None
+    return float(raw_x), float(raw_y)
+
+
+def _p1_drawing_bounds(text: str) -> tuple[float, float, float, float] | None:
+    drawing_scale = 0
+    cursor = 0
+    xs: list[float] = []
+    ys: list[float] = []
+
+    def add_coordinates(payload: str) -> None:
+        for match in _DRAWING_COORDINATE_RE.finditer(payload):
+            xs.append(float(match.group(1)))
+            ys.append(float(match.group(2)))
+
+    for block_match in _OVERRIDE_BLOCK_RE.finditer(text):
+        if drawing_scale == 1:
+            add_coordinates(text[cursor : block_match.start()])
+        for tag_match in _P_TAG_RE.finditer(block_match.group(0)):
+            drawing_scale = int(tag_match.group(1))
+        cursor = block_match.end()
+
+    if drawing_scale == 1:
+        add_coordinates(text[cursor:])
+    if not xs:
+        return None
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _resolved_drawing_box(
+    base_box: GradientBox,
+    defaults: GradientStyleDefaults,
+    placement: GradientPlacement,
+    text: str,
+    state: Mapping[str, object],
+) -> GradientBox | None:
+    drawing_bounds = _p1_drawing_bounds(text)
+    if drawing_bounds is None:
+        return None
+
+    min_x, min_y, max_x, max_y = drawing_bounds
+    scale_x = _resolve_numeric(state, "fscx", defaults.scale_x) / 100.0
+    scale_y = _resolve_numeric(state, "fscy", defaults.scale_y) / 100.0
+    scaled_min_x = min_x * scale_x
+    scaled_min_y = min_y * scale_y
+    scaled_max_x = max_x * scale_x
+    scaled_max_y = max_y * scale_y
+    width = max(0.0, scaled_max_x - scaled_min_x)
+    height = max(0.0, scaled_max_y - scaled_min_y)
+    alignment = _resolved_alignment(text, placement.alignment)
+    offset_x, offset_y = _drawing_alignment_offset(
+        width,
+        height,
+        alignment,
+    )
+
+    pos = _position_from_state(state)
+    if pos is not None:
+        anchor_x, anchor_y = pos
+    elif (
+        placement.use_implicit_positioning
+        and placement.res_x > 0
+        and placement.res_y > 0
+    ):
+        left, top, right, bottom = _implicit_box(
+            width,
+            height,
+            placement,
+            alignment,
+        )
+        anchor_x = left - scaled_min_x + offset_x
+        anchor_y = top - scaled_min_y + offset_y
+    else:
+        anchor_x = base_box.anchor_x
+        anchor_y = base_box.anchor_y
+
+    left = anchor_x + scaled_min_x - offset_x
+    top = anchor_y + scaled_min_y - offset_y
+    right = anchor_x + scaled_max_x - offset_x
+    bottom = anchor_y + scaled_max_y - offset_y
+
+    return GradientBox(
+        left=left,
+        top=top,
+        right=right,
+        bottom=bottom,
+        anchor_x=anchor_x,
+        anchor_y=anchor_y,
+    )
+
+
 def _is_left_aligned(alignment: int) -> bool:
     return alignment in {1, 4, 7}
 
@@ -770,40 +884,62 @@ def _anchor_from_box(
     return anchor_x, anchor_y
 
 
-def _resolved_box(
+def _drawing_alignment_offset(
+    width: float,
+    height: float,
+    alignment: int,
+) -> tuple[float, float]:
+    if _is_left_aligned(alignment):
+        x_offset = 0.0
+    elif _is_center_aligned(alignment):
+        x_offset = width / 2
+    else:
+        x_offset = width
+
+    if _is_top_aligned(alignment):
+        y_offset = 0.0
+    elif _is_middle_aligned(alignment):
+        y_offset = height / 2
+    else:
+        y_offset = height
+    return x_offset, y_offset
+
+
+def _resolved_text_box(
     base_box: GradientBox,
     style_defaults: GradientStyleDefaults,
     placement: GradientPlacement,
-    event: Event,
-    *,
-    color_plane: GradientColorPlane,
+    text: str,
+    state: Mapping[str, object],
 ) -> GradientBox:
-    state = collect_initial_data(event.text)
     font_ratio = _font_ratio(state, style_defaults)
     scale_x = _scale_ratio(state, "fscx", style_defaults.scale_x)
-    scale_y = font_ratio * _scale_ratio(state, "fscy", style_defaults.scale_y)
+    scale_y = font_ratio * _scale_ratio(
+        state,
+        "fscy",
+        style_defaults.scale_y,
+    )
     width = _resolved_width(
         base_box,
         style_defaults,
-        event.text,
+        text,
         state,
         font_ratio,
         scale_x,
     )
     height = (base_box.bottom - base_box.top) * scale_y
+    alignment = _resolved_alignment(text, placement.alignment)
+    pos = _position_from_state(state)
 
-    alignment = _resolved_alignment(event.text, placement.alignment)
-    pos = state.get("pos")
-    if isinstance(pos, list) and len(pos) >= 2:
+    if pos is not None:
+        anchor_x, anchor_y = pos
         left, top, right, bottom = _box_from_anchor(
-            float(pos[0]),
-            float(pos[1]),
+            anchor_x,
+            anchor_y,
             width,
             height,
             alignment,
         )
-        anchor_x = float(pos[0])
-        anchor_y = float(pos[1])
     elif (
         placement.use_implicit_positioning
         and placement.res_x > 0
@@ -830,6 +966,41 @@ def _resolved_box(
         top = anchor_y + (base_box.top - base_box.anchor_y) * scale_y
         bottom = anchor_y + (base_box.bottom - base_box.anchor_y) * scale_y
 
+    return GradientBox(
+        left=left,
+        top=top,
+        right=right,
+        bottom=bottom,
+        anchor_x=anchor_x,
+        anchor_y=anchor_y,
+    )
+
+
+def _resolved_box(
+    base_box: GradientBox,
+    style_defaults: GradientStyleDefaults,
+    placement: GradientPlacement,
+    event: Event,
+    *,
+    color_plane: GradientColorPlane,
+) -> GradientBox:
+    state = collect_initial_data(event.text)
+    box = _resolved_drawing_box(
+        base_box,
+        style_defaults,
+        placement,
+        event.text,
+        state,
+    )
+    if box is None:
+        box = _resolved_text_box(
+            base_box,
+            style_defaults,
+            placement,
+            event.text,
+            state,
+        )
+
     left_pad, right_pad, top_pad, bottom_pad = _visual_padding(
         state,
         style_defaults,
@@ -842,12 +1013,12 @@ def _resolved_box(
             style_defaults,
         )
     return GradientBox(
-        left=left - left_pad + plane_offset_x,
-        top=top - top_pad + plane_offset_y,
-        right=right + right_pad + plane_offset_x,
-        bottom=bottom + bottom_pad + plane_offset_y,
-        anchor_x=anchor_x,
-        anchor_y=anchor_y,
+        left=box.left - left_pad + plane_offset_x,
+        top=box.top - top_pad + plane_offset_y,
+        right=box.right + right_pad + plane_offset_x,
+        bottom=box.bottom + bottom_pad + plane_offset_y,
+        anchor_x=box.anchor_x,
+        anchor_y=box.anchor_y,
     )
 
 
