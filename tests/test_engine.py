@@ -543,6 +543,27 @@ class TestCodeRunner:
         label = cast(Callable[[str], str], env.user_namespace["label"])
         assert label("go") == "[go]"
 
+    def test_include_wraps_missing_external_name_error(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        include_path = tmp_path / "common.py"
+        include_path.write_text(
+            "accent = palette_name.upper()\n",
+            encoding="utf-8",
+        )
+        runner = _CodeRunner()
+
+        with pytest.raises(
+            TemplateRuntimeError,
+            match="name 'palette_name' is not defined",
+        ):
+            runner.run(
+                'include "common.py"',
+                make_setup_env(),
+                base_dir=tmp_path,
+            )
+
     def test_include_accepts_multiple_string_literal_paths(
         self,
         tmp_path: Path,
