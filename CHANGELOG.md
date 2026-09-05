@@ -11,6 +11,9 @@ All notable changes to this project will be documented in this file.
   spaces as the ASS renderer, preventing partially clipped letters.
 - Preserve internal spaces and ASS hard spaces (`\h`) when measuring gradient
   text bounds.
+- Prevent clipped blur halos during transformations by extending the outer
+  gradient slices to cover the visible halo, without adding output lines or
+  changing the gradient's color distribution inside its bounding box.
 
 ## 0.10 - 2026-09-04
 
