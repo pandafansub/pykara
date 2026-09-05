@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from pathlib import Path
 
@@ -13,7 +14,12 @@ from pykara.data import Metadata, Style
 from pykara.declaration import Scope
 from pykara.declaration.template import TemplateBody, TemplateModifiers
 from pykara.engine.engine import Engine
-from pykara.motion import GradientBox, GradientPlacement, GradientStyleDefaults
+from pykara.motion import (
+    GradientBox,
+    GradientPlacement,
+    GradientRequest,
+    GradientStyleDefaults,
+)
 from pykara.motion.render import _resolved_box
 from pykara.parsing import ParsedDeclarations, TemplateDeclaration
 from pykara.processing import LinePreprocessor
@@ -187,3 +193,75 @@ def test_scope_anchor_without_pos_matches_injected_position() -> None:
     assert box.anchor_y == 37.5
     assert box.top == 53.5
     assert box.bottom == 100.5
+
+
+@pytest.mark.parametrize("alignment", [4, 5, 6])
+@pytest.mark.parametrize("padding", ["chi ", " chi", " chi "])
+@pytest.mark.parametrize(
+    "transform",
+    [
+        r"\fscx150\fscy150\t(0,166,0.5,\fscx100\fscy100\blur5)",
+        r"\fscx100\fscy100\t(0,166,0.5,\fscx150\fscy150\blur5)",
+        r"\fs75\t(0,166,0.5,\fs110\blur5)",
+    ],
+)
+def test_animated_gradient_ignores_discarded_edge_spaces(
+    alignment: int,
+    padding: str,
+    transform: str,
+) -> None:
+    provider = font_provider()
+    style = replace(make_style(), fontname="Noto Sans", fontsize=75)
+    measurement = provider.measure(style, "chi")
+    request = GradientRequest(
+        placeholder="GRADIENT",
+        colors=("&H22EDFD&", "&H0000FF&"),
+        step=2,
+        direction="top-bottom",
+        box=GradientBox(0, 0, measurement.width, 75, 200, 100),
+        style_defaults=GradientStyleDefaults(75, 100, 100, 0, 2, 1),
+        placement=GradientPlacement(1920, 1080, 8, 30, 30, 30, 30, False),
+        style=style,
+        measure_ink=provider.measure_ink,
+    )
+    tags = rf"{{\an{alignment}\pos(200,100){transform}\1cGRADIENT}}"
+    clean_event = replace(
+        make_event(),
+        text=tags + "chi",
+        start_time=1000,
+        end_time=1250,
+    )
+    clean = request.expand(clean_event, 24)
+    padded = request.expand(replace(clean_event, text=tags + padding), 24)
+    # Both strings render in the same place, including throughout growth.
+    assert [event.text.removesuffix(padding) for event in padded] == [
+        event.text.removesuffix("chi") for event in clean
+    ]
+    assert len({event.start_time for event in clean}) > 1
+    assert (
+        len(
+            {re.findall(r"\\clip\(([^)]+)\)", event.text)[0] for event in clean}
+        )
+        > 1
+    )
+
+
+@pytest.mark.parametrize("text", [r"chi\h", r"\hchi", "c hi"])
+def test_gradient_preserves_hard_and_internal_spaces(text: str) -> None:
+    measured: list[str] = []
+
+    def measure(style: Style, plain: str) -> TextMeasurement:
+        del style
+        measured.append(plain)
+        return TextMeasurement(45, 75, 12, 0, (4, 17, 43, 62))
+
+    _resolved_box(
+        GradientBox(0, 0, 45, 75, 22.5, 37.5),
+        GradientStyleDefaults(75, 100, 100, 0, 0, 0),
+        GradientPlacement(1920, 1080, 8, 30, 30, 30, 30, False),
+        replace(make_event(), text=rf"{{\an5\pos(200,100)}}{text}"),
+        color_plane="fill",
+        style=make_style(),
+        measure_ink=measure,
+    )
+    assert measured == [text.replace(r"\h", "\N{NO-BREAK SPACE}")]

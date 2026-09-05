@@ -914,7 +914,10 @@ def _gradient_text_measurement(
 ) -> TextMeasurement | None:
     if style is None or measure_ink is None:
         return None
-    plain = _OVERRIDE_BLOCK_RE.sub("", text).replace(r"\h", " ")
+    # ASS discards ordinary spaces at line edges before aligning the text.
+    # Hard spaces stay in the layout and use the font's NBSP glyph metrics.
+    plain = _OVERRIDE_BLOCK_RE.sub("", text).strip(" \t")
+    plain = plain.replace(r"\h", "\N{NO-BREAK SPACE}")
     # Mixed font runs and wrapping need their own layout, not one font box.
     if r"\N" in plain or r"\n" in plain:
         return None
