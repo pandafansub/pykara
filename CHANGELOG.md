@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.11 - 2026-09-04
+
+### Fixed
+
+- Fix gradient clipping for text with leading or trailing spaces, including
+  animated scaling and font size changes. Bounds now discard the same edge
+  spaces as the ASS renderer, preventing partially clipped letters.
+- Preserve internal spaces and ASS hard spaces (`\h`) when measuring gradient
+  text bounds.
+
 ## 0.10 - 2026-09-04
 
 ### Fixed
