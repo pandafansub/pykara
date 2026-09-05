@@ -280,6 +280,7 @@ class Engine:
             declaration="code",
             metadata=meta,
             fbf_framerate=self._fbf_framerate,
+            extents=self._preprocessor.extents,
             rng=random.Random(self._initial_rng_value),  # noqa: S311
         )
         for declaration in declarations.setup:

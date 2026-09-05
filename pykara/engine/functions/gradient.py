@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import ClassVar, Protocol, cast
 
-from pykara.data import Metadata
+from pykara.data import Metadata, Style
 from pykara.engine.functions._base import BoundNamespaceFunction
 from pykara.errors import EngineError
 from pykara.fbf.expansion import (
@@ -21,6 +21,7 @@ from pykara.motion import (
     GradientStyleDefaults,
 )
 from pykara.motion.common import QueuedEventExpansion, queue_event_expansion
+from pykara.processing.font_metrics import TextMeasurement
 
 _VALID_DIRECTIONS = frozenset(
     {"top-bottom", "bottom-top", "left-right", "right-left"}
@@ -264,6 +265,13 @@ class _GradientNamespace:
             box=_gradient_box(self._env),
             style_defaults=_gradient_style_defaults(line.styleref),
             placement=_gradient_placement(self._env, line),
+            style=cast(Style, line.styleref),
+            measure_ink=cast(
+                Callable[[Style, str], TextMeasurement] | None,
+                getattr(
+                    getattr(self._env, "extents", None), "measure_ink", None
+                ),
+            ),
         )
         _queue_expansion(line, request)
         return placeholder

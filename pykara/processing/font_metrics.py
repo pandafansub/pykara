@@ -7,7 +7,7 @@ from __future__ import annotations
 import ctypes
 import sys
 from ctypes import wintypes
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 from importlib import import_module
 from pathlib import Path
@@ -31,6 +31,7 @@ class TextMeasurement:
     height: float
     descent: float
     extlead: float
+    ink_bounds: tuple[float, float, float, float] | None = None
 
 
 RawTextMeasurement = tuple[float, float, float, float]
@@ -154,6 +155,10 @@ class FontMetricsProvider(TextExtentsProvider):
         _MEASUREMENT_CACHE[cache_key] = measurement
         return measurement
 
+    def measure_ink(self, style: Style, text: str) -> TextMeasurement:
+        """Measure visible outlines relative to the layout box's top left."""
+        return _measure_ink(style, text, self.font_dirs)
+
 
 _import_error: ImportError | None = None
 
@@ -195,6 +200,7 @@ def reset_font_cache() -> None:
     _FONT_METRICS_CACHE.clear()
     _MEASUREMENT_CACHE.clear()
     _load_backend.cache_clear()
+    _measure_ink.cache_clear()
 
 
 def _require_dependencies() -> None:
@@ -531,6 +537,27 @@ if sys.platform == "win32":
 
     gdi32.DeleteDC.argtypes = [wintypes.HDC]
     gdi32.DeleteDC.restype = wintypes.BOOL
+
+    for _path_function in ("BeginPath", "EndPath", "FlattenPath"):
+        getattr(gdi32, _path_function).argtypes = [wintypes.HDC]
+        getattr(gdi32, _path_function).restype = wintypes.BOOL
+    gdi32.SetBkMode.argtypes = [wintypes.HDC, ctypes.c_int]
+    gdi32.SetBkMode.restype = ctypes.c_int
+    gdi32.TextOutW.argtypes = [
+        wintypes.HDC,
+        ctypes.c_int,
+        ctypes.c_int,
+        wintypes.LPCWSTR,
+        ctypes.c_int,
+    ]
+    gdi32.TextOutW.restype = wintypes.BOOL
+    gdi32.GetPath.argtypes = [
+        wintypes.HDC,
+        ctypes.POINTER(wintypes.POINT),
+        ctypes.POINTER(wintypes.BYTE),
+        ctypes.c_int,
+    ]
+    gdi32.GetPath.restype = ctypes.c_int
 else:
     gdi32 = None
 
@@ -676,3 +703,154 @@ def _measure_backend_win32(
         gdi32.DeleteDC(dc)
 
     return (width, height, descent, extlead)
+
+
+def _ink_bounds_win32(
+    style: Style,
+    text: str,
+) -> tuple[float, float, float, float] | None:
+    """Read flattened GDI outlines in the same 64x cell as layout metrics."""
+    dc = gdi32.CreateCompatibleDC(None)
+    if not dc:
+        raise PykaraError("Font outline backend: CreateCompatibleDC failed")
+    try:
+        logfont = _make_logfont(style, style.fontsize * 64.0)
+        hfont = gdi32.CreateFontIndirectW(ctypes.byref(logfont))
+        if not hfont:
+            raise PykaraError(
+                "Font outline backend: CreateFontIndirectW failed"
+            )
+        old_font = gdi32.SelectObject(dc, hfont)
+        try:
+            # Opaque background would add the entire cell to the path.
+            gdi32.SetBkMode(dc, 1)  # TRANSPARENT
+            if not gdi32.BeginPath(dc):
+                raise PykaraError("Font outline backend: BeginPath failed")
+            cursor = 0.0
+            for run in text if style.spacing else (text,):
+                length = len(run.encode("utf-16-le")) // 2
+                if not gdi32.TextOutW(dc, round(cursor), 0, run, length):
+                    raise PykaraError("Font outline backend: TextOutW failed")
+                if style.spacing:
+                    size = SIZE()
+                    if not gdi32.GetTextExtentPoint32W(
+                        dc,
+                        run,
+                        length,
+                        ctypes.byref(size),
+                    ):
+                        raise PykaraError("Font outline backend: extent failed")
+                    cursor += size.cx + style.spacing * 64.0
+            if not gdi32.EndPath(dc) or not gdi32.FlattenPath(dc):
+                raise PykaraError("Font outline backend: flatten path failed")
+            count = gdi32.GetPath(dc, None, None, 0)
+            if count < 0:
+                raise PykaraError("Font outline backend: GetPath failed")
+            if count == 0:
+                return None
+            points = (wintypes.POINT * count)()
+            types = (wintypes.BYTE * count)()
+            if gdi32.GetPath(dc, points, types, count) != count:
+                raise PykaraError("Font outline backend: GetPath failed")
+            return (
+                float(min(point.x for point in points)),
+                float(min(point.y for point in points)),
+                float(max(point.x for point in points)),
+                float(max(point.y for point in points)),
+            )
+        finally:
+            gdi32.SelectObject(dc, old_font)
+            gdi32.DeleteObject(hfont)
+    finally:
+        gdi32.DeleteDC(dc)
+
+
+def _ink_bounds_unix(
+    style: Style,
+    text: str,
+    font_dirs: tuple[Path, ...],
+) -> tuple[float, float, float, float] | None:
+    """Union shaped glyph extents, using the layout backend's baseline."""
+    face, font, path = get_font_objects(
+        style.fontname,
+        style.bold,
+        style.italic,
+        font_dirs,
+    )
+    ascent, _descent, cell_height, _leading = get_gdi_metrics(path, face)
+    hb = cast(Any, _get_harfbuzz_module())
+    hb_font = cast(Any, font)
+    scale = style.fontsize * 64.0 / cell_height
+    cursor_x = 0.0
+    cursor_y = 0.0
+    rectangles: list[tuple[float, float, float, float]] = []
+    for run in text if style.spacing else (text,):
+        buffer = hb.Buffer()
+        buffer.add_str(run)
+        buffer.guess_segment_properties()
+        hb.shape(hb_font, buffer, _HB_FEATURES)
+        for glyph, position in zip(
+            buffer.glyph_infos,
+            buffer.glyph_positions,
+            strict=True,
+        ):
+            bounds = hb_font.get_glyph_extents(glyph.codepoint)
+            if bounds is not None and bounds.width and bounds.height:
+                left = cursor_x + (position.x_offset + bounds.x_bearing) * scale
+                top = (
+                    ascent - position.y_offset - bounds.y_bearing
+                ) * scale - cursor_y
+                rectangles.append(
+                    (
+                        left,
+                        top,
+                        left + bounds.width * scale,
+                        top - bounds.height * scale,
+                    )
+                )
+            cursor_x += position.x_advance * scale
+            cursor_y += position.y_advance * scale
+        if style.spacing:
+            cursor_x += style.spacing * 64.0
+    if not rectangles:
+        return None
+    return (
+        min(rect[0] for rect in rectangles),
+        min(rect[1] for rect in rectangles),
+        max(rect[2] for rect in rectangles),
+        max(rect[3] for rect in rectangles),
+    )
+
+
+@lru_cache(maxsize=4096)
+def _measure_ink(
+    style: Style,
+    text: str,
+    font_dirs: tuple[Path, ...],
+) -> TextMeasurement:
+    measurement = FontMetricsProvider(font_dirs).measure(style, text)
+    # Decorations and opaque boxes need more than glyph outlines.
+    if style.underline or style.strike_out or style.border_style == 3:
+        return measurement
+    bounds = (
+        (
+            _ink_bounds_win32(style, text)
+            if platform == "win32"
+            else _ink_bounds_unix(style, text, font_dirs)
+        )
+        if text
+        else None
+    )
+    if bounds is None:
+        bounds = (0.0, 0.0, 0.0, 0.0)
+    sx = style.scale_x / 6400.0
+    sy = style.scale_y / 6400.0
+    return replace(
+        measurement,
+        ink_bounds=(
+            bounds[0] * sx,
+            bounds[1] * sy,
+            bounds[2] * sx,
+            bounds[3] * sy,
+        ),
+    )

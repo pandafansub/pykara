@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import cast
 
 from pykara.data import Event, Style
@@ -38,6 +38,7 @@ from pykara.motion.curves import (
     wave_xy,
 )
 from pykara.motion.jitter import iter_jitter_offsets, jitter_offsets_at
+from pykara.processing.font_metrics import TextMeasurement
 
 _SUPPORTED_BAKED_TRANSFORM_TAGS = frozenset(
     {
@@ -905,12 +906,56 @@ def _drawing_alignment_offset(
     return x_offset, y_offset
 
 
+def _gradient_text_measurement(
+    text: str,
+    state: Mapping[str, object],
+    style: Style | None,
+    measure_ink: Callable[[Style, str], TextMeasurement] | None,
+) -> TextMeasurement | None:
+    if style is None or measure_ink is None:
+        return None
+    plain = _OVERRIDE_BLOCK_RE.sub("", text).replace(r"\h", " ")
+    # Mixed font runs and wrapping need their own layout, not one font box.
+    if r"\N" in plain or r"\n" in plain:
+        return None
+    blocks = list(split_text_blocks(text))
+    has_text = False
+    for block, payload in blocks:
+        if re.search(r"\\r(?:[^\\}]*)", block) or (
+            has_text and re.search(r"\\(?:fn|fs|[bius](?![a-z]))", block)
+        ):
+            return None
+        has_text = has_text or bool(payload)
+    font_names = re.findall(r"\\fn([^\\}]+)", text)
+
+    def flag(tag: str, default: bool) -> bool:
+        values = re.findall(rf"\\{tag}(-?\d+)", text)
+        return bool(int(values[-1])) if values else default
+
+    resolved_style = replace(
+        style,
+        fontname=font_names[-1] if font_names else style.fontname,
+        fontsize=_resolve_numeric(state, "fs", style.fontsize),
+        scale_x=_resolve_numeric(state, "fscx", style.scale_x),
+        scale_y=_resolve_numeric(state, "fscy", style.scale_y),
+        spacing=_resolve_numeric(state, "fsp", style.spacing),
+        bold=flag("b", style.bold),
+        italic=flag("i", style.italic),
+        underline=flag("u", style.underline),
+        strike_out=flag("s", style.strike_out),
+    )
+    if resolved_style.fontsize <= 0:
+        return TextMeasurement(0, 0, 0, 0, (0, 0, 0, 0))
+    return measure_ink(resolved_style, plain)
+
+
 def _resolved_text_box(
     base_box: GradientBox,
     style_defaults: GradientStyleDefaults,
     placement: GradientPlacement,
     text: str,
     state: Mapping[str, object],
+    measurement: TextMeasurement | None = None,
 ) -> GradientBox:
     font_ratio = _font_ratio(state, style_defaults)
     scale_x = _scale_ratio(state, "fscx", style_defaults.scale_x)
@@ -928,6 +973,9 @@ def _resolved_text_box(
         scale_x,
     )
     height = (base_box.bottom - base_box.top) * scale_y
+    if measurement is not None:
+        width = measurement.width
+        height = measurement.height
     alignment = _resolved_alignment(text, placement.alignment)
     pos = _position_from_state(state)
 
@@ -961,10 +1009,26 @@ def _resolved_text_box(
     else:
         anchor_x = base_box.anchor_x
         anchor_y = base_box.anchor_y
-        left = anchor_x + (base_box.left - base_box.anchor_x) * scale_x
-        right = anchor_x + (base_box.right - base_box.anchor_x) * scale_x
-        top = anchor_y + (base_box.top - base_box.anchor_y) * scale_y
-        bottom = anchor_y + (base_box.bottom - base_box.anchor_y) * scale_y
+        if measurement is not None:
+            left, top, right, bottom = _box_from_anchor(
+                anchor_x,
+                anchor_y,
+                width,
+                height,
+                alignment,
+            )
+        else:
+            left = anchor_x + (base_box.left - base_box.anchor_x) * scale_x
+            right = anchor_x + (base_box.right - base_box.anchor_x) * scale_x
+            top = anchor_y + (base_box.top - base_box.anchor_y) * scale_y
+            bottom = anchor_y + (base_box.bottom - base_box.anchor_y) * scale_y
+
+    if measurement is not None and measurement.ink_bounds is not None:
+        ink_left, ink_top, ink_right, ink_bottom = measurement.ink_bounds
+        right = left + ink_right
+        bottom = top + ink_bottom
+        left += ink_left
+        top += ink_top
 
     return GradientBox(
         left=left,
@@ -983,6 +1047,8 @@ def _resolved_box(
     event: Event,
     *,
     color_plane: GradientColorPlane,
+    style: Style | None = None,
+    measure_ink: Callable[[Style, str], TextMeasurement] | None = None,
 ) -> GradientBox:
     state = collect_initial_data(event.text)
     box = _resolved_drawing_box(
@@ -993,12 +1059,19 @@ def _resolved_box(
         state,
     )
     if box is None:
+        measurement = _gradient_text_measurement(
+            event.text,
+            state,
+            style,
+            measure_ink,
+        )
         box = _resolved_text_box(
             base_box,
             style_defaults,
             placement,
             event.text,
             state,
+            measurement,
         )
 
     left_pad, right_pad, top_pad, bottom_pad = _visual_padding(
@@ -1012,6 +1085,12 @@ def _resolved_box(
             state,
             style_defaults,
         )
+    else:
+        xshad, yshad = _shadow_plane_offset(state, style_defaults)
+        left_pad += max(0.0, -xshad)
+        right_pad += max(0.0, xshad)
+        top_pad += max(0.0, -yshad)
+        bottom_pad += max(0.0, yshad)
     return GradientBox(
         left=box.left - left_pad + plane_offset_x,
         top=box.top - top_pad + plane_offset_y,
@@ -1219,6 +1298,8 @@ class GradientRequest(EventExpander):
     box: GradientBox
     style_defaults: GradientStyleDefaults
     placement: GradientPlacement
+    style: Style | None = None
+    measure_ink: Callable[[Style, str], TextMeasurement] | None = None
 
     def expand(self, event: Event, framerate: FrameRateSource) -> list[Event]:
         validate_gradient_event(event)
@@ -1234,6 +1315,8 @@ class GradientRequest(EventExpander):
                 self.placement,
                 baked_event,
                 color_plane=color_plane,
+                style=self.style,
+                measure_ink=self.measure_ink,
             )
             positioned = inject_pos(baked_event, box.anchor_x, box.anchor_y)
             count = _slice_count(box, self.direction, self.step)
@@ -1302,6 +1385,8 @@ class MultiGradientRequest(EventExpander):
                 priority.placement,
                 baked_event,
                 color_plane=priority_plane,
+                style=priority.style,
+                measure_ink=priority.measure_ink,
             )
             positioned = inject_pos(
                 baked_event,
