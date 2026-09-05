@@ -1161,7 +1161,9 @@ def _slice_clip(
     index: int,
     count: int,
     step: float,
+    clip_box: GradientBox | None = None,
 ) -> list[float]:
+    coverage = clip_box or box
     if direction in {"top-bottom", "bottom-top"}:
         start = box.top + step * index
         end = min(box.top + step * (index + 1), box.bottom)
@@ -1170,7 +1172,11 @@ def _slice_clip(
                 start = max(box.top, start - _BLEED)
             if index < count - 1:
                 end = min(box.bottom, end + _BLEED)
-        return [box.left, start, box.right, end]
+        if index == 0:
+            start = coverage.top
+        if index == count - 1:
+            end = coverage.bottom
+        return [coverage.left, start, coverage.right, end]
 
     start = box.left + step * index
     end = min(box.left + step * (index + 1), box.right)
@@ -1179,7 +1185,34 @@ def _slice_clip(
             start = max(box.left, start - _BLEED)
         if index < count - 1:
             end = min(box.right, end + _BLEED)
-    return [start, box.top, end, box.bottom]
+    if index == 0:
+        start = coverage.left
+    if index == count - 1:
+        end = coverage.right
+    return [start, coverage.top, end, coverage.bottom]
+
+
+def _gradient_clip_box(
+    box: GradientBox,
+    placement: GradientPlacement,
+    text: str,
+) -> GradientBox:
+    """Cover the blur halo without changing gradient stops or slice count."""
+    state = collect_initial_data(text)
+    if (
+        _resolve_numeric(state, "blur", 0.0) <= 0
+        and _resolve_numeric(state, "be", 0.0) <= 0
+    ):
+        return box
+    # Blur strength is not its support radius. Let the renderer draw the
+    # complete halo, clamping its colors to the outer gradient slices.
+    return replace(
+        box,
+        left=min(box.left, 0.0),
+        top=min(box.top, 0.0),
+        right=max(box.right, float(placement.res_x)),
+        bottom=max(box.bottom, float(placement.res_y)),
+    )
 
 
 def _format_rectangular_clip(clip_rect: list[float]) -> str:
@@ -1323,6 +1356,11 @@ class GradientRequest(EventExpander):
             )
             positioned = inject_pos(baked_event, box.anchor_x, box.anchor_y)
             count = _slice_count(box, self.direction, self.step)
+            clip_box = _gradient_clip_box(
+                box,
+                self.placement,
+                baked_event.text,
+            )
             slice_colors = _slice_colors(self.colors, self.direction, count)
             text_template = _prepare_gradient_text_template(
                 positioned.text,
@@ -1335,6 +1373,7 @@ class GradientRequest(EventExpander):
                     index,
                     count,
                     self.step,
+                    clip_box,
                 )
                 result_lines.append(
                     _line_with_text(
@@ -1401,6 +1440,11 @@ class MultiGradientRequest(EventExpander):
                 priority.direction,
                 priority.step,
             )
+            clip_box = _gradient_clip_box(
+                priority_box,
+                priority.placement,
+                baked_event.text,
+            )
             request_colors = {
                 request.placeholder: _slice_colors(
                     request.colors,
@@ -1420,6 +1464,7 @@ class MultiGradientRequest(EventExpander):
                     index,
                     count,
                     priority.step,
+                    clip_box,
                 )
                 text = positioned.text
                 for request in self.requests:
