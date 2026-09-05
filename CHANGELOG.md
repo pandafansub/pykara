@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.10 - 2026-09-04
+
+### Fixed
+
+- Calculate gradient clips from visible glyph outlines instead of the full
+  font cell, avoiding unnecessary slices above and below the text while
+  preserving alignment.
+- Include border and shadow extents in text gradient bounds, with padding for
+  blur and antialiasing. Shadow gradients follow the shadow offset.
+- Measure visible text bounds with GDI on Windows and FreeType/HarfBuzz on
+  Linux and macOS, including font, scale, and spacing overrides.
+
 ## 0.9 - 2026-07-01
 
 ### Added
